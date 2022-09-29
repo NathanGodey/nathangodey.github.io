@@ -86,7 +86,7 @@ There are two main arguments in favor of looking for isotropy in contextualized 
 
 ## Degeneration and cosine-similarity
 
-Cosine-similarity is a metric ranging from -1 to 1 that reflects angular proximity between vectors. Looking at the histogram of average cosine-similarity between two random representations from the last layer of BERT shows that the embedding space covers a small portion of the possible directions:
+Cosine-similarity is a metric ranging from -1 to 1 that reflects angular proximity between vectors. Looking at the histogram of average cosine-similarity between two random representations from the last layer of BERT shows that the embedding space covers a small portion of the possible directions. Not only the average cosine-similarity is almost 0.4, but there also is almost no pairs with a negative similarity, which is a sign of poor "*angular diversity*":
 {% include plotly/cossim_bert.html %}
 > Perfectly anisotropic representations would be orthogonal to one another in average, which would induce a smooth distribution of cosine similarities centered around 0.
 {: .prompt-info }
