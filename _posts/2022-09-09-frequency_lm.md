@@ -104,11 +104,11 @@ As I reached this point in my understanding of the representation degeneration p
 
 ## Frequency and the embedding space
 We saw visually that there is a strong correlation between word frequency and the embedding space, but can we measure it? 
-A way to answer this question is to compare the singular spectrum and the word frequency associated to each token. For each singular vector, we look at the correlation between the weights associated to the embeddings in this singular direction and the word frequencies associated to the embeddings. Let's look at the absolute value of the Pearson correlation between these two variables with respect to the singular value:
+A way to answer this question is to compare the singular spectrum and the word frequency associated to each token. For each singular vector, we look at the correlation between the weights associated to the embeddings in this singular component and the word frequencies associated to the embeddings. Let's look at the absolute value of the Pearson correlation between these two variables with respect to the singular value:
 
 {% include plotly/corr_sv.html %}
 
-This plot shows that **the highest singular values correspond to directions that are correlated with frequency (up to 25%)**. Once again, as we see here, the singular spectrum of the embeddings is really spiked with singular values decaying pretty fast (here at log-scale on the x-axis). This means that most of the variance of the embeddings has *some* correlation with the corpus frequency. This correlation is significative for these singular values, as the p-value of the Pearson test shows:
+This plot shows that **the highest singular values correspond to components that are correlated with frequency (up to 25%)**. Once again, as we see here, the singular spectrum of the embeddings is really spiked with singular values decaying pretty fast (here at log-scale on the x-axis). This means that most of the variance of the embeddings has *some* correlation with the corpus frequency. This correlation is significative for these singular values, as the p-value of the Pearson test shows:
 
 {% include plotly/pval_sv.html %}
 
@@ -122,8 +122,8 @@ My current research focuses exactly around the hypothesis presented in this post
 
 - The representations of most language models lie in a cone in the embedding space
 - This might be explained by how cross-entropy behaves with rare words ([Gao et al.](https://arxiv.org/pdf/1907.12009.pdf))
-- Removing the strongest singular dimensions makes the representations more isotropic ([Bihani et al.](https://arxiv.org/pdf/2104.10833.pdf))
-- The strongest singular dimensions are correlated with word frequency
+- Removing the strongest singular components makes the representations more isotropic ([Bihani et al.](https://arxiv.org/pdf/2104.10833.pdf))
+- The strongest singular components are correlated with word frequency
 
 ### Open questions
 
