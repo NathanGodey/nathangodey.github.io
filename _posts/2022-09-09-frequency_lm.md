@@ -142,3 +142,5 @@ My current research focuses exactly around the hypothesis presented in this post
 [On the Sentence Embeddings from Pre-trained Language Models (Li et al., 2020)](https://arxiv.org/pdf/2104.08821.pdf)
 
 [Whitening Sentence Representations for Better Semantics and Faster Retrieval (Su et al., 2021)](https://arxiv.org/pdf/2103.15316.pdf)
+
+*Thanks to Roman and Rian for their comprehensive feedback!*
