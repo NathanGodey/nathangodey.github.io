@@ -1,6 +1,6 @@
 ---
 title: How word frequency affects language models
-date: 2022-09-29 16:00:00 +0200
+date: 2022-09-29 15:58:00 +0200
 categories: [logbook]
 math: true
 tags: [thesis, anisotropy, representation]     # TAG names should always be lowercase
