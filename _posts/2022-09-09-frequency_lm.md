@@ -3,6 +3,7 @@ title: How word frequency affects language models
 date: 2022-09-29 15:58:00 +0200
 categories: [logbook]
 math: true
+author: me
 tags: [thesis, anisotropy, representation]     # TAG names should always be lowercase
 ---
 
@@ -143,4 +144,4 @@ My current research focuses exactly around the hypothesis presented in this post
 
 [Whitening Sentence Representations for Better Semantics and Faster Retrieval (Su et al., 2021)](https://arxiv.org/pdf/2103.15316.pdf)
 
-*Thanks to Roman and Rian for their comprehensive feedback!*
+*Thanks to [Roman Castagné](https://www.linkedin.com/in/roman-castagné) and [Rian Touchent](https://rian-t.github.io/) for their comprehensive feedback, and to [Benoît Sagot](https://pauillac.inria.fr/~sagot/index.html) and [Eric Villemonte de la Clergie](http://alpage.inria.fr/~clerger/) for their supervision!*
