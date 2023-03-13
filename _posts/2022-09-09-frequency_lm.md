@@ -1,6 +1,6 @@
 ---
 title: How word frequency affects language models
-date: 2022-09-29 15:58:00 +0200
+date: 2023-03-13 15:00:00 +0200
 categories: [logbook]
 math: true
 author: me
@@ -145,3 +145,5 @@ My current research focuses exactly around the hypothesis presented in this post
 [Whitening Sentence Representations for Better Semantics and Faster Retrieval (Su et al., 2021)](https://arxiv.org/pdf/2103.15316.pdf)
 
 *Thanks to [Roman Castagné](https://www.linkedin.com/in/roman-castagné) and [Rian Touchent](https://rian-t.github.io/) for their comprehensive feedback, and to [Benoît Sagot](https://pauillac.inria.fr/~sagot/index.html) and [Eric Villemonte de la Clergie](http://alpage.inria.fr/~clerger/) for their supervision!*
+
+*This work was funded by the PRAIRIE institute as part of a PhD contract at Inria Paris and Sorbonne Université.*
