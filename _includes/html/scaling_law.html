@@ -1,0 +1,91 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chinchilla Calculator</title>
+    <style>
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        input {
+            width: 200px;
+            padding: 5px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .scaling_container {
+            width: 70%;
+            font-size: 13pt;
+            max-width: auto;
+            padding: 10px;
+            margin: auto;
+            background: lightyellow;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        button {
+            background-color: #4caf50;
+            color: #fff;
+            padding: 5px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+    <script>
+        function formatNumber(num) {
+            if (num >= 1e12) {
+                return (num / 1e12).toFixed(2) + "T";
+            } else if (num >= 1e9) {
+                return (num / 1e9).toFixed(2) + "B";
+            } else if (num >= 1e6) {
+                return (num / 1e6).toFixed(2) + "M";
+            } else {
+                return num;
+            }
+        }
+        function computeOptimalTokens() {
+            // Get the user input
+            var userInput = document.getElementById("userInput").value;
+
+            // Check if the input is a valid number
+            if (isNaN(userInput)) {
+                alert("Please enter a valid model size (in M)");
+                return;
+            }
+
+            // Convert the input to a number and compute the square
+            var result = parseInt(0.5190139039846232 * (userInput*1e6) ** 1.2142857142857142);
+
+            // Display the result
+            document.getElementById("result").innerHTML = "A model of " + formatNumber(userInput*1e6) + " parameters should train on: <b>" + formatNumber(result) + " tokens</b>.";
+        }
+    </script>
+</head>
+<body>
+    <div class="scaling_container">
+        <label for="userInput">Enter a model size (in M, without embeddings):</label>
+        <input type="text" id="userInput" placeholder="e.g. 7000">
+
+        <button onclick="computeOptimalTokens()">Get training tokens</button>
+
+        <p id="result"></p>
+    </div>
+</body>
