@@ -62,19 +62,12 @@
             }
         }
         function computeOptimalTokens() {
-            // Get the user input
             var userInput = document.getElementById("userInput").value;
-
-            // Check if the input is a valid number
             if (isNaN(userInput)) {
                 alert("Please enter a valid model size (in M)");
                 return;
             }
-
-            // Convert the input to a number and compute the square
             var result = parseInt(0.5190139039846232 * (userInput*1e6) ** 1.2142857142857142);
-
-            // Display the result
             document.getElementById("result").innerHTML = "A model of " + formatNumber(userInput*1e6) + " parameters should train on: <b>" + formatNumber(result) + " tokens</b>.";
         }
     </script>
