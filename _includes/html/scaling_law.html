@@ -68,7 +68,7 @@
                 return;
             }
             var result = parseInt(0.5190139039846232 * (userInput*1e6) ** 1.2142857142857142);
-            document.getElementById("result").innerHTML = "A model of " + formatNumber(userInput*1e6) + " parameters should train on: <b>" + formatNumber(result) + " tokens</b>.";
+            document.getElementById("result").innerHTML = "A model of " + formatNumber(userInput*1e6) + " parameters should train on: <b>" + formatNumber(result) + " tokens</b>.<br/>This will cost ~"+ parseInt(userInput*1e6*result/(312*3600*1e12)) + " A100 hours (rough estimate).";
         }
     </script>
 </head>
