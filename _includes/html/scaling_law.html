@@ -50,6 +50,16 @@
         }
     </style>
     <script>
+        window.addEventListener("DOMContentLoaded", (event) => {
+            var input = document.getElementById("userInput");
+            input.addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    document.getElementById("computeButton").click();
+                }
+            });
+        });
+        
         function formatNumber(num) {
             if (num >= 1e12) {
                 return (num / 1e12).toFixed(2) + "T";
@@ -68,7 +78,7 @@
                 return;
             }
             var result = parseInt(0.5190139039846232 * (userInput*1e6) ** 1.2142857142857142);
-            document.getElementById("result").innerHTML = "A model of " + formatNumber(userInput*1e6) + " parameters should train on: <b>" + formatNumber(result) + " tokens</b>.<br/>This will cost ~"+ parseInt(userInput*1e6*result/(312*3600*1e12)) + " A100 hours (rough estimate).";
+            document.getElementById("result").innerHTML = "A model of " + formatNumber(userInput*1e6) + " parameters should train on: <b>" + formatNumber(result) + " tokens</b>.<br/>This will cost ~"+ parseInt(6*userInput*1e6*result/(100*3600*1e12)) + " A100 hours (rough estimate).";
         }
     </script>
 </head>
@@ -77,7 +87,7 @@
         <label for="userInput">Enter a model size (in M, without embeddings):</label>
         <input type="text" id="userInput" placeholder="e.g. 7000">
 
-        <button onclick="computeOptimalTokens()">Get training tokens</button>
+        <button id="computeButton" onclick="computeOptimalTokens()">Get training tokens</button>
 
         <p id="result"></p>
     </div>
