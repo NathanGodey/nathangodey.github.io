@@ -1,5 +1,5 @@
 ---
-title: Resume
+title: Resume / CV
 icon: fas fa-info-circle
 order: 5
 ---
