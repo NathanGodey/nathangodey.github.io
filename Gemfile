@@ -4,6 +4,12 @@ source "https://rubygems.org"
 
 gem "jekyll-theme-chirpy", "~> 6.5", ">= 6.5.5"
 
+# Ruby 4.0 removed several gems from the default set that Jekyll/Chirpy expect.
+gem "logger"
+gem "csv"
+gem "base64"
+gem "bigdecimal"
+
 group :test do
   gem "html-proofer", "~> 4.4"
 end

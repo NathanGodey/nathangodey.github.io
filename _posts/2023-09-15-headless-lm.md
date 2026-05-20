@@ -3,6 +3,7 @@ title: 'Headless Language Models: Learning without Predicting with Contrastive W
 date: 2023-09-15 15:00:00 +0200
 categories: [featured, publications]
 description: "A simple token-level contrastive loss can replace cross-entropy and improve data and compute-efficiency for Masked and Causal LM training, especially when token vocabularies are larger."
+venue: ICLR 2024
 author: me
 image: img/thumbnails/headless_thumb-min.jpeg
 tags: [thesis, language-modeling]     # TAG names should always be lowercase

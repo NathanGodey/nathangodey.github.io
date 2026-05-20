@@ -5,126 +5,103 @@ refactor: true
 
 {% include lang.html %}
 
-{% assign pinned = site.posts | where: 'pin', 'true' %}
-{% assign default = site.posts | where_exp: 'item', 'item.pin != true and item.hidden != true' %}
+{% assign featured = site.posts | where: 'categories', 'featured' %}
+{% assign latest = featured | first %}
+{% assign rest = featured | shift %}
+{% assign news = site.posts | where: 'categories', 'logbook' %}
 
-{% assign posts = '' | split: '' %}
+<!-- ============ HERO ============ -->
+<section class="home-hero">
+  <div class="home-hero__left">
+    <div class="home-hero__tagline">NLP Postdoc · Cornell Tech</div>
+    <h1 class="home-hero__name">Nathan Godey</h1>
+    <p class="home-hero__bio">
+      I'm a postdoc in <a href="https://yoavartzi.com/" target="_blank" rel="noopener">Yoav Artzi's lab</a> at Cornell Tech.
+      Before that, I did my PhD at <a href="https://almanach.inria.fr/index-en.html" target="_blank" rel="noopener">Inria ALMAnaCH</a>, advised by <a href="http://alpage.inria.fr/~sagot/" target="_blank" rel="noopener">Benoît Sagot</a> and <a href="http://alpage.inria.fr/~clerger/" target="_blank" rel="noopener">Éric de la Clergerie</a>.
+      I work at the intersection of NLP and representation learning, with a focus on <b>understanding</b> the representations language models build, and <b>improving</b> them.
+    </p>
 
-<!-- Get pinned posts -->
-
-{% assign offset = paginator.page | minus: 1 | times: paginator.per_page %}
-{% assign pinned_num = pinned.size | minus: offset %}
-
-{% if pinned_num > 0 %}
-  {% for i in (offset..pinned.size) limit: pinned_num %}
-    {% assign posts = posts | push: pinned[i] %}
-  {% endfor %}
-{% else %}
-  {% assign pinned_num = 0 %}
-{% endif %}
-
-<!-- Get default posts -->
-
-{% assign default_beg = offset | minus: pinned.size %}
-
-{% if default_beg < 0 %}
-  {% assign default_beg = 0 %}
-{% endif %}
-
-{% assign default_num = paginator.posts | size | minus: pinned_num %}
-{% assign default_end = default_beg | plus: default_num | minus: 1 %}
-
-{% if default_num > 0 %}
-  {% for i in (default_beg..default_end) %}
-    {% assign posts = posts | push: default[i] %}
-  {% endfor %}
-{% endif %}
-
-
-<h2>About me</h2>
-<p style='text-align: justify'>
-I am a postdoc in <a href="https://yoavartzi.com/" target="_blank">Yoav Artzi's lab</a> at Cornell University.
-
-Before that, I obtained my PhD in the <a href="https://almanach.inria.fr/index-en.html" target="_blank">ALMAnaCH lab</a> at Inria Paris, advised by <a href="http://alpage.inria.fr/~sagot/" target="_blank">Benoît Sagot</a> and <a href="http://alpage.inria.fr/~clerger/" target="_blank">Éric de la Clergerie</a>. 
-<br/>
-My research interests lie within the intersection of natural language processing and representation learning. I am specifically interested in <b>understanding the representations</b> of current language models, and studying how <b>learning better representations</b> can lead to better language models. 
-<br/>
-</p>
-<hr />
-
-
-<h2>Featured publications</h2>
-<div id="post-list" class="flex-grow-1 px-xl-1">
-  {% assign filtered_posts = site.posts | where: 'categories', "featured" %}
-  {% for post in filtered_posts %}
-    <article class="card-wrapper card">
-      <a href="{{ post.url | relative_url }}" class="post-preview row g-0 flex-md-row-reverse">
-        {% assign card_body_col = '12' %}
-
-        {% if post.image %}
-          {% assign src = post.image.path | default: post.image %}
-          {% unless src contains '//' %}
-            {% assign src = post.media_subpath | append: '/' | append: src | replace: '//', '/' %}
-          {% endunless %}
-
-          {% assign alt = post.image.alt | xml_escape | default: 'Preview Image' %}
-
-          {% assign lqip = null %}
-
-          {% if post.image.lqip %}
-            {% capture lqip %}lqip="{{ post.image.lqip }}"{% endcapture %}
-          {% endif %}
-
-          <div class="col-md-5">
-            <img src="{{ src }}" alt="{{ alt }}" {{ lqip }}>
-          </div>
-
-          {% assign card_body_col = '7' %}
-        {% endif %}
-
-        <div class="col-md-{{ card_body_col }}">
-          <div class="card-body d-flex flex-column">
-            <h1 class="card-title my-2 mt-md-0">{{ post.title }}</h1>
-
-            <div class="card-text content mt-0 mb-3">
-              <p>{% include post-description.html %}</p>
-            </div>
-
-            <div class="post-meta flex-grow-1 d-flex align-items-end">
-              <div class="me-auto">
-                <!-- posted date -->
-                <i class="far fa-calendar fa-fw me-1"></i>
-                {% include datetime.html date=post.date lang=lang %}
-
-                <!-- categories -->
-                {% if post.categories.size > 0 %}
-                  <i class="far fa-folder-open fa-fw me-1"></i>
-                  <span class="categories">
-                    {% for category in post.categories %}
-                      {{ category }}
-                      {%- unless forloop.last -%},{%- endunless -%}
-                    {% endfor %}
-                  </span>
-                {% endif %}
-              </div>
-
-              {% if post.pin %}
-                <div class="pin ms-1">
-                  <i class="fas fa-thumbtack fa-fw"></i>
-                  <span>{{ site.data.locales[lang].post.pin_prompt }}</span>
-                </div>
-              {% endif %}
-            </div>
-            <!-- .post-meta -->
-          </div>
-          <!-- .card-body -->
-        </div>
+    <div class="home-hero__pills">
+      <a class="home-hero__pill" href="https://scholar.google.com/citations?user=YIbsNP8AAAAJ" target="_blank" rel="noopener">
+        <i class="fas fa-graduation-cap"></i> Scholar
       </a>
-    </article>
+      <a class="home-hero__pill" href="https://github.com/NathanGodey" target="_blank" rel="noopener">
+        <i class="fab fa-github"></i> GitHub
+      </a>
+      <a class="home-hero__pill" href="https://twitter.com/nthngdy" target="_blank" rel="noopener">
+        <i class="fa-brands fa-x-twitter"></i> @nthngdy
+      </a>
+      <a class="home-hero__pill" href="mailto:godeynathan@gmail.com">
+        <i class="fas fa-envelope"></i> Email
+      </a>
+    </div>
+  </div>
+
+  {% if latest %}
+    <div class="home-hero__right">
+      <a class="home-latest" href="{{ latest.url | relative_url }}">
+        {% if latest.image %}
+          {% assign src = latest.image.path | default: latest.image %}
+          <div class="home-latest__thumb">
+            <img src="{{ src | relative_url }}" alt="{{ latest.title | xml_escape }}" loading="lazy" data-bg-sample="true">
+          </div>
+        {% endif %}
+        <div class="home-latest__label">Latest · {{ latest.date | date: "%b %Y" }}</div>
+        <h3 class="home-latest__title">{{ latest.title }}</h3>
+        <p class="home-latest__desc">{{ latest.description }}</p>
+      </a>
+    </div>
+  {% endif %}
+</section>
+
+<!-- ============ PUBLICATIONS GRID ============ -->
+<div class="home-section-head">
+  <h2>Selected publications</h2>
+  <a class="home-section-head__link" href="{{ '/publications/' | relative_url }}">See all →</a>
+</div>
+
+<div class="pub-grid">
+  {% for post in rest limit: 6 %}
+    <a class="pub-card" href="{{ post.url | relative_url }}">
+      {% if post.image %}
+        {% assign src = post.image.path | default: post.image %}
+        <div class="pub-card__thumb">
+          <img src="{{ src | relative_url }}" alt="{{ post.title | xml_escape }}" loading="lazy" data-bg-sample="true">
+        </div>
+      {% endif %}
+      <div class="pub-card__body">
+        <h3 class="pub-card__title">{{ post.title }}</h3>
+        <div class="pub-card__meta">
+          <span class="pub-card__year">{{ post.date | date: "%Y" }}</span>
+          {% if post.tags contains 'thesis' %}
+            <span class="pub-card__tag">PhD thesis</span>
+          {% elsif post.categories contains 'publications' %}
+            <span class="pub-card__tag">Paper</span>
+          {% endif %}
+          {% if post.venue %}
+            <span class="pub-card__venue">{{ post.venue }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </a>
   {% endfor %}
 </div>
-<!-- #post-list -->
 
-{% if paginator.total_pages > 1 %}
-  {% include post-paginator.html %}
+<!-- ============ NEWS ============ -->
+{% if news.size > 0 %}
+  <div class="home-section-head">
+    <h2>News</h2>
+    <a class="home-section-head__link" href="{{ '/logbook/' | relative_url }}">All notes →</a>
+  </div>
+
+  <ul class="home-news">
+    {% for post in news limit: 4 %}
+      <li class="home-news__item">
+        <time class="home-news__date">{{ post.date | date: "%b %Y" }}</time>
+        <a class="home-news__title" href="{{ post.url | relative_url }}">{{ post.title }}</a>
+      </li>
+    {% endfor %}
+  </ul>
 {% endif %}
+
+<script src="{{ '/assets/js/thumb-color.js' | relative_url }}" defer></script>

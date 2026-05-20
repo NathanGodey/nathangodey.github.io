@@ -5,6 +5,7 @@ categories: [publications]
 author: me
 image: img/thumbnails/geo_thumb-min.jpeg
 description: "The ability to probe geographical information in LLM's representations scales inequally across countries/continents."
+venue: LREC-COLING 2024
 tags: [thesis, geographical, frequency]     # TAG names should always be lowercase
 ---
 

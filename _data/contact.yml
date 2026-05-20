@@ -10,9 +10,10 @@
   icon: "fas fa-envelope"
   noblank: true # open link in current tab
 
-- type: rss
-  icon: "fas fa-rss"
-  noblank: true
+- type: scholar
+  icon: "fas fa-graduation-cap"
+  url: "https://scholar.google.com/citations?user=YIbsNP8AAAAJ"
+
 # Uncomment and complete the url below to enable more contact options
 #
 # - type: mastodon
