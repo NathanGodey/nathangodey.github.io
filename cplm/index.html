@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copy-Paste Language Models</title>
+<meta name="description" content="Copy-Paste Language Models (CPLMs) add a lightweight pointer head next to the LM head. Nathan Godey and Yoav Artzi, Cornell University.">
+<meta property="og:title" content="Copy-Paste Language Models">
+<meta property="og:description" content="A lightweight Copy-Paste head next to the LM head: faster training, better perplexity, SFT and long-context results, and sliding-window models that match full attention.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400;1,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #fbfaf8;
+  --surface: #ffffff;
+  --surface-2: #f3f1ee;
+  --ink: #1b1a19;
+  --ink-2: #4a4744;
+  --muted: #7a7672;
+  --line: #e4e0db;
+  --cp: #1a9a5a;          /* Copy-Paste head: green */
+  --sink: #d6332b;        /* sink (roll back to the LM head): red */
+  --mid: #e3a008;         /* sink scale midpoint: amber */
+  --cp-soft: rgba(26, 154, 90, 0.10);
+  --accent: #13824a;
+  --vanilla: #a8a29b;
+  --heat-0: #f1efeb;
+  --on-cp: #ffffff;
+  --good: #1f7a4a;
+  --tok-hover: rgba(26, 154, 90, 0.16);
+  --tok-src: rgba(26, 154, 90, 0.12);
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141312;
+    --surface: #1c1b1a;
+    --surface-2: #252321;
+    --ink: #f0eeeb;
+    --ink-2: #c9c5c0;
+    --muted: #8f8a85;
+    --line: #34312e;
+    --cp: #4cc788;
+    --sink: #f0635a;
+    --mid: #f2bf3c;
+    --cp-soft: rgba(76, 199, 136, 0.13);
+    --accent: #5fd197;
+    --vanilla: #77716b;
+    --heat-0: #262422;
+    --on-cp: #0e1a13;
+    --good: #5cc48e;
+    --tok-hover: rgba(76, 199, 136, 0.22);
+    --tok-src: rgba(76, 199, 136, 0.14);
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141312; --surface: #1c1b1a; --surface-2: #252321; --ink: #f0eeeb; --ink-2: #c9c5c0;
+  --muted: #8f8a85; --line: #34312e; --cp: #4cc788; --sink: #f0635a; --mid: #f2bf3c; --cp-soft: rgba(76,199,136,.13);
+  --accent: #5fd197; --vanilla: #77716b; --heat-0: #262422; --on-cp: #0e1a13; --good: #5cc48e; --tok-hover: rgba(76,199,136,.22); --tok-src: rgba(76,199,136,.14); --shadow: none;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.6 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+.narrow { max-width: 760px; }
+code, .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: .92em; }
+code, .mono, .tokens.code, .eq, pre { font-variant-ligatures: none; }
+
+/* ---------- hero ---------- */
+header.hero { padding-top: 64px; padding-bottom: 28px; text-align: center; }
+.hero h1 { font-size: clamp(34px, 6vw, 54px); line-height: 1.08; margin: 0 0 18px; letter-spacing: -0.02em; font-weight: 700; }
+.hero h1 .cp { color: var(--cp); }
+.authors { font-size: 18px; margin: 0; }
+.authors a { color: var(--ink); border-bottom: 1px solid var(--line); }
+.authors a:hover { text-decoration: none; border-color: var(--ink); }
+.affil { color: var(--muted); margin: 4px 0 22px; }
+.links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px;
+  background: var(--ink); color: var(--bg); font-weight: 500; font-size: 15px;
+}
+.btn:hover { text-decoration: none; opacity: .88; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn.disabled { opacity: .45; pointer-events: none; }
+.btn svg { width: 16px; height: 16px; }
+
+.tldr {
+  margin: 34px auto 0; max-width: 760px; text-align: left; font-size: 17px; color: var(--ink-2);
+}
+.tldr b { color: var(--ink); }
+
+/* ---------- sections ---------- */
+section { padding: 40px 0; }
+section + section { border-top: 1px solid var(--line); }
+h2 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.01em; }
+h3 { font-size: 19px; margin: 28px 0 6px; }
+.lede { color: var(--ink-2); margin: 0 0 20px; }
+p { margin: 0 0 14px; }
+
+/* ---------- the viz ---------- */
+.viz-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.ctl-label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-right: 8px; font-weight: 600; }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; flex-wrap: wrap; }
+.seg button {
+  font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--ink-2);
+  padding: 5px 11px; border-radius: 7px; cursor: pointer; white-space: nowrap;
+}
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:not([aria-pressed="true"]):hover { background: var(--surface-2); }
+.ctl { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.ctl input[type=range] { width: 120px; accent-color: var(--cp); }
+.ctl output { font-variant-numeric: tabular-nums; font-size: 14px; min-width: 2.5em; color: var(--ink-2); }
+
+.ex-head { padding: 16px 18px 0; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; justify-content: space-between; }
+.ex-blurb { color: var(--ink-2); font-size: 15px; }
+.ex-stats { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ex-stats b { color: var(--ink); font-weight: 600; }
+
+.text-stage { position: relative; padding: 46px 22px 26px; }
+.text-stage svg.arrows { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.tokens {
+  position: relative; z-index: 1;
+  white-space: pre-wrap; word-break: break-word; line-height: 3; font-size: 16px;
+}
+.tokens.code { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 14px; line-height: 2.9; }
+/* every token sits on an opaque rounded chip, so arrows pass behind the text */
+.tok { --tok-bg: color-mix(in srgb, var(--surface) 72%, transparent); border-radius: 5px; cursor: default; transition: background-color .12s; padding: 2px 0; background-color: var(--tok-bg); }
+.tok.target { background-image: linear-gradient(var(--cp-soft), var(--cp-soft)); }
+.tok.hl { background: linear-gradient(var(--tok-hover), var(--tok-hover)), var(--tok-bg); outline: 1.5px solid var(--cp); }
+.tok.src { background: linear-gradient(var(--tok-src), var(--tok-src)), var(--tok-bg); outline: 1.5px dashed var(--cp); }
+.tok.bos { display: none; }
+.gap-chip {
+  display: inline-block; font-size: 12px; color: var(--muted); border: 1px dashed var(--line);
+  border-radius: 6px; padding: 0 8px; line-height: 1.9; margin: 0 2px; font-family: Inter, sans-serif; white-space: nowrap;
+}
+.arrows path.arc { fill: none; stroke-linecap: round; transition: opacity .15s; opacity: var(--op); }
+.arrows.dim path.arc { opacity: .06; }
+.arrows.dim path.arc.on { opacity: 1; }
+.text-stage svg.arrows-front { z-index: 2; }
+.arrows-front path.arc { opacity: .9; }
+
+.turn { border-radius: 10px; padding: 4px 14px; margin: 0 0 18px; }
+.turn.user { border: 1px solid var(--line); }   /* no fill: arrows behind the text must stay visible */
+.turn-label { display: block; font: 600 11px/1.2 Inter, sans-serif; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 10px 0 0; }
+.turn.asst .turn-label { color: var(--cp); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px 30px; align-items: center; padding: 12px 18px 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+.legend .item { display: flex; align-items: center; gap: 10px; }
+.legend .gradient { width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--cp), var(--mid), var(--sink)); }
+.legend .ticks { display: flex; justify-content: space-between; width: 120px; font-size: 11px; color: var(--muted); }
+.legend .hint { color: var(--muted); margin-left: auto; }
+
+.tip {
+  position: fixed; z-index: 50; pointer-events: none; min-width: 210px; max-width: 290px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.14); padding: 10px 12px; font-size: 13px; line-height: 1.45;
+  opacity: 0; transition: opacity .1s;
+}
+.tip.show { opacity: 1; }
+.tip .tt-tok { font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 14px; }
+.tip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+.tip .row span:first-child { color: var(--muted); }
+.tip hr { border: 0; border-top: 1px solid var(--line); margin: 7px 0; }
+.tip .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+.tip .src-row { display: flex; justify-content: space-between; gap: 10px; font-variant-numeric: tabular-nums; }
+.tip .src-row .mono { color: var(--ink); }
+
+/* ---------- method ---------- */
+.eq {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0;
+  font-family: "JetBrains Mono", monospace; font-size: 14px; overflow-x: auto; white-space: nowrap;
+}
+.eq .c { color: var(--cp); } .eq .s { color: var(--sink); }
+
+/* ---------- figures & tables ---------- */
+figure { margin: 18px 0 26px; }
+.paper {
+  background: #fff; border-radius: 10px; padding: 12px; border: 1px solid var(--line);
+}
+.paper img { display: block; width: 100%; height: auto; }
+.paper .legend-img { max-width: 560px; margin: 0 auto 6px; }
+.row-figs { display: grid; gap: 10px; }
+.row-figs.c2 { grid-template-columns: repeat(2, 1fr); }
+.row-figs.c3 { grid-template-columns: repeat(3, 1fr); }
+figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; }
+.sub { text-align: center; font-size: 12px; color: #555; margin-top: 2px; }
+
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0 8px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.stat .num { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); line-height: 1.1; }
+.stat .lbl { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin: 14px 0 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+thead th { font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--line); font-size: 13px; }
+tbody tr.grp td { border-top: 1px solid var(--line); }
+tbody tr.cplm td { background: var(--cp-soft); }
+td b { font-weight: 700; }
+td.avg { font-weight: 600; }
+.cap { font-size: 13px; color: var(--muted); }
+.delta { color: var(--good); font-size: 11px; margin-left: 3px; }
+
+pre.bib {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px;
+  overflow-x: auto; font-size: 13px; line-height: 1.5; position: relative;
+}
+.copy-btn { position: absolute; top: 10px; right: 10px; font: 12px Inter, sans-serif; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); cursor: pointer; }
+footer { padding: 30px 0 50px; color: var(--muted); font-size: 13px; text-align: center; }
+
+
+/* ---------- section scaffolding ---------- */
+.eyebrow { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+section h2 { font-size: clamp(26px, 3.6vw, 34px); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 14px; }
+.ink-cp { color: var(--cp); font-weight: 600; } .ink-sink { color: var(--sink); font-weight: 600; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: 0; margin-right: 7px; }
+.dot.cp { background: var(--cp); } .dot.vanilla { background: var(--vanilla); }
+.key { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; font-size: 14px; color: var(--ink-2); margin: 4px 0 4px; }
+.key-note { color: var(--muted); font-size: 13px; }
+
+/* ---------- method ---------- */
+.method-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.3fr); gap: 36px; align-items: start; margin-top: 18px; }
+.tex { margin: 6px 0 18px; padding: 14px 4px; overflow-x: auto; font-size: 1.05em; }
+.callout { border-left: 3px solid var(--cp); background: var(--cp-soft); padding: 12px 16px; border-radius: 0 10px 10px 0; color: var(--ink-2); font-size: 15px; }
+.mech { position: sticky; top: 20px; margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
+.mech-context { font-size: 15px; color: var(--ink-2); margin-bottom: 16px; line-height: 1.6; }
+.mech-dim { color: var(--muted); }
+.mech-blank { display: inline-block; min-width: 92px; text-align: center; border-bottom: 2px solid var(--cp); color: var(--cp); font-weight: 600; }
+.mech-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.mech-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 10px; justify-content: flex-end; }
+.mech-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.mech-card { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px 10px; position: relative; }
+.mech-card + .mech-card::before { content: "→"; position: absolute; left: -11px; top: 12px; color: var(--muted); font-size: 13px; }
+.mech-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin-bottom: 10px; }
+.mech-bars { display: grid; gap: 7px; }
+.mb { display: grid; grid-template-columns: minmax(0, 1fr) 30px; gap: 2px 6px; align-items: center; font-size: 12.5px; }
+.mb .lab { font-family: "JetBrains Mono", monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.mb .lab small { color: var(--muted); font-family: Inter, sans-serif; font-size: 10px; margin-left: 4px; }
+.mb .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 12px; }
+.mb .track { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--surface-2); display: flex; overflow: hidden; }
+.mb .track i { display: block; height: 100%; }
+.mb.hit .lab { color: var(--cp); font-weight: 600; }
+.mech-gate { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.mech figcaption, .mech + figcaption { font-size: 13.5px; color: var(--muted); margin-top: 14px; line-height: 1.55; }
+
+/* ---------- results chapters ---------- */
+.chapter { padding: 36px 0 8px; border-top: 1px solid var(--line); margin-top: 36px; }
+.chapter.last { padding-bottom: 0; }
+.ch-head { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 4px 12px; max-width: 820px; margin-bottom: 18px; }
+.ch-num { font-size: 15px; font-weight: 600; color: var(--cp); font-variant-numeric: tabular-nums; padding-top: 5px; }
+.ch-head h3 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
+.ch-head p { color: var(--ink-2); margin: 0; }
+.fig { margin: 0 0 22px; }
+.fig-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; min-height: 34px; }
+.fig-title { font-weight: 600; font-size: 15px; }
+.fig-cap { font-size: 13.5px; color: var(--muted); margin: 8px 0 0; }
+.fig-body { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 14px 6px; }
+.fig-maps:empty { display: none; }
+.fig-maps { margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 18px; }
+.split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
+.split > *, .fig, .fig-body, .method-grid > * { min-width: 0; }
+.fig[data-fig]:not(.native) .fig-body, .fig[data-fig]:not(.native) .fig-ctl, .fig[data-fig]:not(.native) .fig-maps { display: none; }
+.fig[data-fig]:not(.fallback) .fig-fallback { display: none; }
+.fig[data-fig="passk"]:not(.native) { display: none; }
+.fig .seg button { font-size: 13px; padding: 4px 10px; }
+.view-toggle { font: 500 12.5px Inter, sans-serif; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.view-toggle:hover { border-color: var(--ink-2); }
+.fig-table { display: none; }
+.fig.show-table .fig-table { display: block; }
+.fig.show-table .fig-body { display: none; }
+.fig-table table { font-size: 13px; }
+.fig-table tr.avg td { border-top: 1px solid var(--line); font-weight: 600; }
+
+/* svg charts */
+.chart { display: block; overflow: visible; font-family: Inter, sans-serif; }
+.chart .c-title { font-size: 13px; font-weight: 600; fill: var(--ink); }
+.chart .c-grid line { stroke: var(--line); stroke-width: 1; }
+.chart .c-axis text, .chart .c-tick { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.chart .c-axis line, .chart .c-axis path { stroke: var(--line); }
+.chart .c-label { font-size: 11.5px; fill: var(--muted); }
+.chart .c-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.chart .c-band { opacity: .14; }
+.chart .c-dot { stroke: var(--surface); stroke-width: 2; }
+.chart .c-dot.big { stroke-width: 2.5; cursor: default; }
+.chart .c-hdot { stroke: var(--surface); stroke-width: 2; }
+.chart .c-cross { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart .c-dlabel { font-size: 11.5px; font-weight: 500; }
+.chart .c-shade { fill: var(--surface-2); }
+.chart .c-note { font-size: 10.5px; fill: var(--muted); }
+.chart .c-ref { stroke: var(--vanilla); stroke-dasharray: 4 4; }
+.chart .c-arrow { stroke: var(--cp); stroke-width: 2; fill: none; }
+.chart .c-cell { font-size: 10px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.panel { min-width: 0; }
+.swatch-line { display: inline-block; width: 14px; margin-right: 7px; vertical-align: 3px; }
+.tip .tt-head { font-weight: 600; font-size: 13px; }
+.tip .tt-note { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+/* gain bars */
+.gain { padding: 12px 16px 10px; }
+.gain-row { display: grid; grid-template-columns: 118px repeat(3, minmax(0, 1fr)); gap: 0 10px; align-items: center; min-height: 32px; }
+.gain-head { min-height: 22px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.gain-col { text-align: center; }
+.gain-row.avg { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.gain-row.avg .gain-label { font-weight: 600; }
+.gain-label { font-size: 13.5px; line-height: 1.2; }
+.gain-label span { display: block; font-size: 11px; color: var(--muted); }
+.gain-cell { position: relative; height: 22px; cursor: default; }
+.gain-zero { position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid var(--line); }
+.gain-bar { position: absolute; top: 5px; height: 12px; border-radius: 3px; }
+.gain-bar.pos { background: var(--cp); border-radius: 0 3px 3px 0; }
+.gain-bar.neg { background: var(--vanilla); border-radius: 3px 0 0 3px; }
+.gain-val { position: absolute; top: 2px; font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
+.gain-val.neg { color: var(--muted); }
+
+/* niah */
+.niah { display: grid; grid-template-columns: 1.12fr 1fr 1fr; gap: 6px 14px; }
+.niah-head { font-weight: 600; font-size: 13.5px; margin: 2px 0 4px; text-align: center; }
+.panel.tight .chart .c-title { font-size: 12px; font-weight: 500; fill: var(--ink-2); }
+
+@media (max-width: 860px) {
+  .method-grid, .split { grid-template-columns: 1fr; }
+  .mech { position: static; }
+  .grid-3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .mech-cols { grid-template-columns: 1fr; }
+  .mech-card + .mech-card::before { content: "↓"; left: 12px; top: -15px; }
+  .niah { grid-template-columns: 1fr; }
+  .ch-head { grid-template-columns: 1fr; }
+  .gain-row { grid-template-columns: 92px repeat(3, minmax(0, 1fr)); gap: 0 6px; }
+}
+
+@media (max-width: 760px) {
+  header.hero { padding-top: 40px; }
+  .method-grid { grid-template-columns: 1fr; }
+  .row-figs.c3, .row-figs.c2 { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .text-stage { padding: 40px 12px 20px; }
+  .tokens { font-size: 15px; }
+  .tokens.code { font-size: 12.5px; }
+  .legend .hint { margin-left: 0; }
+}
+
+
+/* =====================================================================
+   Funky theme: Lato, thick ink borders, hard shadows, sticker colors.
+   ===================================================================== */
+:root {
+  --bg: #fbfbf7; --surface: #ffffff; --surface-2: #f0efe8; --ink: #141414; --ink-2: #303030; --muted: #6a6a64;
+  --line: #141414; --hair: #d6d5cc; --cp: #00a06a; --accent: #00a06a; --sink: #ef3b2d; --mid: #ffb400;
+  --yellow: #ffd84d; --pink: #ff9fc6; --mid-ink: #d18700; --cp-soft: rgba(0, 160, 106, 0.12); --vanilla: #a3a29a; --heat-0: #f0efe8; --on-cp: #ffffff;
+  --tok-hover: rgba(0, 160, 106, 0.18); --tok-src: rgba(255, 216, 77, 0.45); --hard: 5px 5px 0 var(--ink);
+  --hl-yellow: var(--yellow); --hl-pink: var(--pink);
+  --font: "Lato", -apple-system, "Helvetica Neue", sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --hl-yellow: rgba(255, 216, 77, 0.38); --hl-pink: rgba(255, 159, 198, 0.38); --bg: #121212; --surface: #1b1b1b; --surface-2: #262626; --ink: #f4f2ea; --ink-2: #d9d7cf; --muted: #9a988f;
+    --line: #f4f2ea; --hair: #3a3a38; --cp: #2fd394; --accent: #2fd394; --sink: #ff6b5c; --mid: #ffc93c;
+    --yellow: #ffd84d; --pink: #ff9fc6; --mid-ink: #ffc93c; --cp-soft: rgba(47, 211, 148, 0.14); --vanilla: #77766f; --heat-0: #262626; --on-cp: #0b1a12;
+    --tok-hover: rgba(47, 211, 148, 0.22); --tok-src: rgba(255, 216, 77, 0.28); --hard: 5px 5px 0 #000;
+  }
+}
+:root[data-theme="dark"] {
+  --mid-ink: #ffc93c; --hl-yellow: rgba(255, 216, 77, 0.38); --hl-pink: rgba(255, 159, 198, 0.38); --bg: #121212; --surface: #1b1b1b; --surface-2: #262626; --ink: #f4f2ea; --ink-2: #d9d7cf; --muted: #9a988f;
+  --line: #f4f2ea; --hair: #3a3a38; --cp: #2fd394; --accent: #2fd394; --sink: #ff6b5c; --mid: #ffc93c;
+  --cp-soft: rgba(47, 211, 148, 0.14); --vanilla: #77766f; --heat-0: #262626; --on-cp: #0b1a12;
+  --tok-hover: rgba(47, 211, 148, 0.22); --tok-src: rgba(255, 216, 77, 0.28); --hard: 5px 5px 0 #000;
+}
+body { font: 18px/1.6 var(--font); }
+code, pre, .tokens.code { font-family: var(--mono); }
+a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--cp); text-decoration-thickness: 3px; text-underline-offset: 3px; }
+a:hover { background: var(--yellow); color: #141414; text-decoration: none; }
+mark { background: linear-gradient(transparent 55%, var(--yellow) 55%); color: inherit; padding: 0 2px; }
+
+/* the brutal frame shared by every boxed thing */
+.viz-card, .fig-body, .fig-maps, .mech, .stat, .table-wrap, pre.bib, .btn, .tip {
+  border: 2.5px solid var(--line) !important; border-radius: 12px; box-shadow: var(--hard);
+}
+
+/* hero */
+header.hero { text-align: left; padding-top: 70px; padding-bottom: 30px; }
+.hero h1.title { position: relative; margin: 0 0 28px; font: 900 clamp(52px, 10vw, 112px)/0.95 var(--font); letter-spacing: -0.035em; }
+.t-line { display: block; }
+.t-sub { font-weight: 300; letter-spacing: -0.03em; }
+.w-copy { background: var(--yellow); color: #141414; padding: 0 .06em; border-radius: 6px; box-decoration-break: clone; }
+.w-paste { color: var(--cp); }
+.caret { display: inline-block; width: .06em; height: .8em; background: var(--cp); margin-left: .04em; vertical-align: -0.05em; animation: blink 1.05s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+.title-arrow { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.title-arrow path { fill: none; stroke: var(--cp); stroke-width: 5; stroke-linecap: round; }
+.authors { font-size: 20px; margin: 0 0 26px; }
+.authors a { border: 0; font-weight: 700; }
+.links { display: flex; flex-wrap: wrap; gap: 14px; justify-content: flex-start; }
+.btn { display: inline-flex; align-items: center; padding: 10px 18px; font: 900 16px var(--font); background: var(--surface); color: var(--ink); text-decoration: none; transition: transform .08s, box-shadow .08s; }
+.btn:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink); background: var(--surface); color: var(--ink); opacity: 1; }
+.btn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
+.btn.b-green { background: var(--cp); color: #fff; }
+.btn.b-yellow { background: var(--yellow); color: #141414; }
+.tldr { margin: 34px 0 0; max-width: 820px; font-size: 22px; line-height: 1.55; font-weight: 400; color: var(--ink); }
+
+/* sections */
+section { padding: 64px 0; }
+section + section { border-top: 0; }
+h2, section h2 { font: 900 clamp(34px, 5vw, 54px)/1.02 var(--font); letter-spacing: -0.03em; margin: 0 0 18px; }
+h2 { display: inline; background: linear-gradient(transparent 62%, var(--cp-soft) 62%); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+#viz h2 { background: linear-gradient(transparent 62%, var(--hl-yellow) 62%); }
+#chat h2 { background: linear-gradient(transparent 62%, var(--hl-pink) 62%); }
+#key-results h2 { background: linear-gradient(transparent 62%, color-mix(in oklab, var(--cp) 45%, transparent) 62%); }
+#method h2 { background: linear-gradient(transparent 62%, color-mix(in oklab, var(--cp) 45%, transparent) 62%); }
+#results h2 { background: linear-gradient(transparent 62%, var(--hl-yellow) 62%); }
+#models h2, #bibtex h2 { background: linear-gradient(transparent 62%, var(--hl-pink) 62%); }
+section h2 + * { margin-top: 26px !important; }
+.lede { font-size: 19px; color: var(--ink-2); max-width: 820px; }
+.eyebrow, .sec, .ch-num, .hero-meta { display: none !important; }
+
+/* viz cards */
+.viz-card { background: var(--surface); overflow: visible; }
+.controls { background: var(--surface-2); border-bottom: 2.5px solid var(--line); border-radius: 10px 10px 0 0; padding: 14px 18px; gap: 12px 26px; }
+.ctl-label { font: 900 14px var(--font); text-transform: none; letter-spacing: 0; color: var(--ink); margin-right: 10px; }
+.seg { background: transparent; border: 0; padding: 0; gap: 6px; }
+.seg button, .fig .seg button { font: 700 14px var(--font); padding: 5px 12px; border-radius: 999px; color: var(--ink); border: 2px solid var(--line); background: var(--surface); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:not([aria-pressed="true"]):hover { background: var(--yellow); color: #141414; }
+.ex-head { padding: 16px 20px 0; }
+.ex-blurb { font-size: 17px; font-weight: 700; }
+.ex-stats { font-size: 13px; }
+.text-stage { padding: 48px 22px 26px; }
+.tokens { font-family: var(--font); font-size: 18px; }
+.tokens.code { font-size: 13.5px; }
+.legend { border-top: 2.5px solid var(--line); padding: 12px 20px 14px; font-size: 13px; }
+.legend .hint { font-style: italic; }
+.turn { border: 2px solid var(--hair); border-radius: 12px; padding: 4px 16px 6px; }
+.turn.user { border: 2px dashed var(--hair); }
+.turn.asst { border-color: var(--cp); }
+.turn-label { font: 900 12px var(--font); text-transform: none; letter-spacing: 0; color: var(--ink); }
+.turn.asst .turn-label { color: var(--cp); }
+.gap-chip { font: 700 12px var(--font); border-radius: 999px; border: 2px dashed var(--hair); }
+.tok.src { outline-color: #141414; }
+
+/* method */
+.method-grid { gap: 44px; }
+.tex { font-size: 1.12em; }
+.callout { background: var(--yellow); color: #141414; border: 2.5px solid var(--line); border-radius: 12px; box-shadow: var(--hard); padding: 14px 18px; font-size: 16.5px; transform: rotate(-0.6deg); }
+.mech { background: var(--surface); padding: 20px; }
+.mech-context { font-size: 18px; }
+.mech-blank { border-bottom: 4px solid var(--cp); }
+.mech-card { background: var(--bg); border: 2px solid var(--line); border-radius: 10px; padding: 12px 10px; }
+.mech-card + .mech-card::before { content: "→"; left: -15px; top: 10px; font-weight: 900; color: var(--ink); font-size: 16px; }
+.mech-title { font: 900 14px var(--font); text-transform: none; letter-spacing: 0; color: var(--ink); }
+.mb .track { height: 7px; border-radius: 4px; }
+.mech-legend { font-size: 12.5px; }
+.mech figcaption { font-size: 15px; color: var(--ink-2); }
+
+/* results */
+.key { font-size: 15px; font-weight: 700; }
+.stats-row { gap: 18px; margin: 30px 0 10px; }
+.stat { padding: 18px 18px 16px; }
+.stat:nth-child(1) { background: var(--cp); color: var(--on-cp); transform: rotate(-1.2deg); }
+.stat:nth-child(2) { background: var(--yellow); color: #141414; transform: rotate(0.8deg); }
+.stat:nth-child(3) { background: var(--pink); color: #141414; transform: rotate(-0.5deg); }
+.stat:nth-child(4) { background: var(--surface); transform: rotate(1deg); }
+.stat .num { font: 900 46px/1 var(--font); letter-spacing: -0.03em; color: inherit; }
+.stat .lbl { font-size: 14px; font-weight: 700; color: inherit; opacity: .9; margin-top: 8px; }
+.chapter { border-top: 0; padding-top: 30px; margin-top: 40px; }
+.ch-head { display: block; max-width: 860px; }
+.ch-head h3 { font: 900 30px/1.15 var(--font); letter-spacing: -0.02em; margin: 0 0 8px; }
+.ch-head p { font-size: 18px; color: var(--ink-2); }
+.fig-title { font: 900 16px var(--font); }
+.fig-cap { font-size: 14.5px; color: var(--muted); }
+.fig-body, .fig-maps { background: var(--surface); padding: 16px 16px 8px; }
+.fig-top { margin-bottom: 12px; }
+.gain { padding: 14px 18px 10px; }
+.gain-head { font-size: 13px; font-weight: 900; color: var(--ink); }
+.gain-label { font-size: 15px; font-weight: 700; }
+.gain-label span { font-weight: 400; }
+.gain-row { min-height: 34px; }
+.gain-bar, .gain-bar.pos { border-radius: 0 6px 6px 0; height: 12px; top: 5px; }
+.gain-bar.neg { border-radius: 6px 0 0 6px; }
+.gain-val { font-weight: 700; font-size: 12px; }
+.view-toggle { font: 900 13px var(--font); border: 2px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); padding: 4px 12px; }
+.view-toggle:hover { background: var(--yellow); color: #141414; }
+.niah-head { font-size: 15px; font-weight: 900; }
+.table-wrap { background: var(--surface); }
+table { font-size: 13.5px; }
+.paper { border: 2.5px solid var(--line); border-radius: 12px; }
+
+/* charts */
+.chart { font-family: var(--font); }
+.chart .c-title { font: 900 14px var(--font); }
+.chart .c-axis text, .chart .c-tick { font-size: 11.5px; }
+.chart .c-label { font-size: 12px; }
+.chart .c-dlabel { font-weight: 900; font-size: 12.5px; }
+.chart .c-line { stroke-width: 2.75px; }
+.chart .c-grid line { stroke: var(--hair); stroke-dasharray: 2 4; }
+.chart .c-axis line, .chart .c-axis path { stroke: var(--ink); }
+.chart .c-shade { fill: color-mix(in oklab, var(--yellow) 22%, transparent); }
+.tip { font: 13px/1.5 var(--font); border-radius: 10px; }
+.tip .tt-tok { font-family: var(--mono); }
+.tip .tt-head { font: 900 14px var(--font); }
+
+/* models & citation */
+pre.bib { background: var(--surface); padding: 18px; font-size: 13px; }
+.copy-btn { font: 900 12px var(--font); border: 2px solid var(--line); border-radius: 999px; background: var(--yellow); color: #141414; }
+footer { font-size: 15px; font-weight: 700; text-align: center; padding: 30px 0 60px; color: var(--muted); }
+@media (max-width: 760px) {
+  body { font-size: 17px; }
+  .tldr { font-size: 19px; }
+  .stat { transform: none !important; }
+  .mech-card + .mech-card::before { content: "↓"; left: 14px; top: -20px; }
+}
+
+/* schemas */
+.schema-fig .fig-top { gap: 10px 22px; }
+.slider { display: inline-flex; align-items: center; gap: 10px; font: 900 14px var(--font); }
+.slider input { width: 150px; accent-color: var(--cp); }
+.slider b { font-variant-numeric: tabular-nums; min-width: 2.5em; }
+.schema-svg { min-height: 200px; }
+.chart.schema text { font-family: var(--font); }
+.sc-doc { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.sc-doc.gold { fill: var(--yellow); }
+.sc-line { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.sc-line.on-gold { stroke: #141414; }
+.sc-bb { fill: var(--surface-2); stroke: var(--ink); stroke-width: 2; }
+.sc-bbt { font-size: 13px; font-weight: 900; fill: var(--ink); }
+.sc-kv { fill: var(--vanilla); }
+.sc-cp { fill: var(--cp); }
+.sc-q, .sc-ans { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.sc-ans { stroke: var(--cp); stroke-width: 2.5; }
+.sc-qt { font-size: 14px; font-weight: 900; fill: var(--ink); }
+.sc-qs { font-size: 12px; fill: var(--muted); }
+.sc-lab { font-size: 12.5px; font-weight: 700; fill: var(--ink-2); }
+.sc-note { font-size: 12.5px; font-weight: 900; fill: var(--sink); }
+.sc-more { font-size: 13px; font-weight: 900; fill: var(--muted); }
+.sc-arrow { fill: none; stroke: var(--cp); stroke-width: 3.5; stroke-linecap: round; }
+.sc-flow { fill: var(--cp); opacity: .85; }
+.sc-head { fill: var(--surface); stroke: var(--ink); stroke-width: 2.5; }
+.sc-big { font-size: 15px; font-weight: 900; fill: var(--ink); }
+.sc-lost { font-size: 12.5px; font-weight: 900; fill: var(--sink); }
+.schema-readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 10px 0 8px; }
+.ro { border: 2px solid var(--line); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.ro span { font-size: 13px; font-weight: 700; color: var(--muted); }
+.ro b { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; }
+.ro i { font-size: 12.5px; font-style: normal; color: var(--ink-2); }
+.ro.hi { background: var(--cp); color: var(--on-cp); }
+.ro.hi span, .ro.hi i { color: var(--on-cp); opacity: .9; }
+.schema-fig .fig-ctl { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center; }
+.sc-drain { fill: none; stroke-linecap: butt; }
+.sc-hl { font-size: 18px; font-weight: 900; font-style: italic; fill: var(--ink); }
+.schema-note { font-size: 13.5px; color: var(--ink-2); margin: 4px 0 8px; }
+.hs-panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.hs-panel { border: 2px solid var(--hair); border-radius: 10px; padding: 12px 12px 10px; min-width: 0; }
+.hs-panel.star { border: 2.5px solid var(--cp); box-shadow: 4px 4px 0 var(--cp); }
+.hs-ro { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 2px solid var(--hair); padding-top: 10px; margin-top: 4px; }
+.hs-ro span { display: block; font-size: 12px; font-weight: 700; color: var(--muted); }
+.hs-ro b { font-size: 24px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.15; }
+.hs-ro i { display: block; font-size: 11.5px; font-style: normal; color: var(--ink-2); }
+.sc-ll { font-size: 11px; font-weight: 700; fill: var(--muted); }
+.sc-ll.cp { fill: var(--cp); font-weight: 900; }
+.sc-in { font-size: 11px; font-weight: 700; fill: var(--muted); }
+.sc-dots { font-size: 16px; font-weight: 900; fill: var(--muted); }
+.sc-col { font-size: 12px; font-weight: 900; fill: var(--ink-2); }
+.sc-up { stroke: var(--muted); stroke-width: 2; fill: none; }
+@media (max-width: 900px) { .hs-panels { grid-template-columns: 1fr; } }
+/* gain callouts */
+.gain-callout { display: inline-block; background: var(--yellow); color: #141414; border: 2px solid var(--line); border-radius: 999px; padding: 4px 14px; font-size: 14px; margin: 0 0 12px; transform: rotate(-1deg); box-shadow: 3px 3px 0 var(--ink); }
+.gain-callout:empty { display: none; }
+
+.highlights { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin: 6px 0 26px; }
+.hl-card { border: 2.5px solid var(--line); border-radius: 12px; box-shadow: var(--hard); background: var(--surface); padding: 16px 18px 14px; }
+.hl-card:nth-child(1) { background: var(--cp); color: var(--on-cp); }
+.hl-card:nth-child(2) { background: var(--yellow); color: #141414; }
+.hl-card:nth-child(3) { background: var(--pink); color: #141414; }
+.hl-card:nth-child(odd) { transform: rotate(-0.6deg); } .hl-card:nth-child(even) { transform: rotate(0.5deg); }
+.hl-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 900; }
+.hl-tag { border: 2px solid currentColor; border-radius: 999px; padding: 0 9px; }
+.hl-big { font: 900 44px/1 var(--font); letter-spacing: -0.04em; margin: 12px 0 2px; white-space: nowrap; }
+.hl-bench { font-size: 19px; font-weight: 900; }
+.hl-rows { margin: 12px 0 4px; display: grid; gap: 6px; }
+.hl-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) 74px; align-items: center; gap: 8px; font-size: 12.5px; }
+.hl-row .hl-d { text-align: right; font-weight: 900; font-variant-numeric: tabular-nums; }
+.hl-row .hl-ab { grid-column: 2 / 4; font-size: 11.5px; opacity: .75; margin-top: -4px; }
+.hl-bar { position: relative; height: 16px; }
+.hl-track { position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: currentColor; opacity: .25; }
+.hl-span { position: absolute; top: 5px; height: 6px; background: currentColor; border-radius: 3px; opacity: .85; }
+.hl-dot { position: absolute; top: 1px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; border: 2.5px solid currentColor; background: var(--surface); }
+.hl-dot.c { background: currentColor; }
+.hl-vals { display: flex; justify-content: space-between; font-size: 13.5px; }
+.hl-note { font-size: 13.5px; opacity: .8; margin-top: 6px; }
+.all-results { margin: 6px 0 20px; }
+.all-results summary { cursor: pointer; font-weight: 900; display: inline-block; border: 2px solid var(--line); border-radius: 999px; padding: 4px 14px; }
+.all-results summary:hover { background: var(--yellow); color: #141414; }
+.all-results[open] summary { margin-bottom: 16px; }
+.sc-row { font-size: 15px; font-weight: 900; fill: var(--ink); }
+.sc-cell.kept.kv { fill: color-mix(in oklab, var(--vanilla) 55%, var(--surface)); stroke: var(--ink); stroke-width: 2; }
+.sc-cell.kept.cp { fill: var(--cp); stroke: var(--ink); stroke-width: 2; }
+.sc-cell.dropped { fill: url(#hs-hatch); stroke: var(--muted); stroke-width: 2; stroke-dasharray: 6 5; }
+.sc-cellt { font-size: 14px; font-weight: 900; fill: var(--muted); }
+.sc-cellt.kv, .sc-cellt.cp { fill: var(--ink); }
+.sc-cellt.cp, .sc-cells.cp { fill: var(--on-cp); }
+.sc-cells { font-size: 12.5px; fill: var(--muted); }
+.sc-cells.kv { fill: var(--ink-2); }
+.sc-att { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-dasharray: 5 4; }
+.sc-copy { fill: none; stroke: var(--cp); stroke-width: 4; }
+.sc-tag { font-size: 12px; font-weight: 900; fill: var(--ink); }
+.sc-tag.cp { fill: var(--cp); }
+@media (max-width: 860px) { .highlights { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .highlights { grid-template-columns: 1fr; } .hl-card { transform: none !important; } }
+
+.gain-callout span { font-weight: 900; color: #0a6b45; }
+.gain-cell.star { background: color-mix(in oklab, var(--yellow) 55%, transparent); border-radius: 6px; }
+.gain-cell.star .gain-val { font-weight: 900; color: var(--ink); }
+.gain-cell.star::after { content: "★"; position: absolute; left: 4px; top: 1px; font-size: 13px; color: var(--ink); }
+@media (max-width: 760px) { .schema-readout { grid-template-columns: 1fr; } .slider input { width: 120px; } }
+
+/* key results grid */
+#key-results { padding-top: 24px; }
+.kr-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.kr { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 30px; min-height: 176px;
+  border: 2.5px solid var(--line); border-radius: 12px; box-shadow: var(--hard); background: var(--surface); color: var(--ink);
+  text-decoration: none; transition: transform .1s, box-shadow .1s; }
+.kr:hover { transform: translate(-3px, -3px) rotate(-0.5deg); box-shadow: 8px 8px 0 var(--ink); background: var(--surface); color: var(--ink); }
+.kr:nth-child(5n+1) { background: var(--cp); color: var(--on-cp); }
+.kr:nth-child(5n+2) { background: var(--yellow); color: #141414; }
+.kr:nth-child(5n+3) { background: var(--pink); color: #141414; }
+.kr:nth-child(5n+5) { background: var(--ink); color: var(--bg); }
+.kr:nth-child(5n+1):hover { background: var(--cp); color: var(--on-cp); }
+.kr:nth-child(5n+2):hover { background: var(--yellow); color: #141414; }
+.kr:nth-child(5n+3):hover { background: var(--pink); color: #141414; }
+.kr:nth-child(5n+5):hover { background: var(--ink); color: var(--bg); }
+.kr-topic { align-self: flex-start; font-size: 12px; font-weight: 900; border: 2px solid currentColor; border-radius: 999px; padding: 1px 9px; margin-bottom: 8px; }
+.kr-num { font: 900 34px/1 var(--font); letter-spacing: -0.04em; white-space: nowrap; }
+.kr-lbl { font-size: 15px; font-weight: 700; line-height: 1.25; margin-top: 6px; }
+.kr-sub { font-size: 12.5px; opacity: .8; line-height: 1.3; }
+.kr-go { position: absolute; right: 12px; bottom: 8px; font-size: 20px; font-weight: 900; }
+.chapter { scroll-margin-top: 20px; }
+@media (max-width: 1000px) { .kr-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .kr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kr-num { font-size: 30px; } }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+</head>
+<body>
+
+<header class="hero wrap">
+  <h1 class="title" id="title">
+    <span class="t-line"><span class="w-copy" id="w-copy">Copy</span>-<span class="w-paste" id="w-paste">Paste</span><span class="caret" aria-hidden="true"></span></span>
+    <span class="t-line t-sub">Language Models</span>
+    <svg class="title-arrow" id="title-arrow" aria-hidden="true"></svg>
+  </h1>
+  <p class="authors"><a href="https://nathangodey.github.io">Nathan Godey</a> &amp; <a href="https://yoavartzi.com">Yoav Artzi</a>, Cornell University</p>
+  <div class="links">
+    <a class="btn b-green" href="https://arxiv.org/abs/2610.19247">Read the paper</a>
+    <a class="btn b-yellow" href="https://huggingface.co/collections/nthngdy/cplm">Get the models</a>
+    <a class="btn" href="https://github.com/KellerJordan/modded-nanogpt/pull/379">Speedrun record</a>
+    <a class="btn" href="#bibtex">BibTeX</a>
+  </div>
+  <p class="tldr">
+    Transformers are thought to be good at copying from their context, yet every prediction still goes through the
+    low-rank LM head. <mark>CPLMs add a lightweight Copy-Paste head</mark> that predicts the next token by
+    <i>pointing</i> at a past position. It costs ~3% compute. In return, models reach the same loss with up to 1.5&times; fewer training tokens and improve
+    perplexity, downstream, SFT and long-context results at every scale and on every backbone. Sliding-window CPLMs
+    also match full attention with 12&times; less memory.
+  </p>
+</header>
+
+<section id="key-results">
+  <div class="wrap">
+    <h2>Key results</h2>
+    <div class="kr-grid">
+      <a class="kr" href="#training"><span class="kr-topic">Pretraining</span><span class="kr-num">1.2–1.5×</span><span class="kr-lbl">fewer training tokens to reach the vanilla loss</span><span class="kr-sub">all three 1.7B backbones</span><span class="kr-go" aria-hidden="true">→</span></a>
+      <a class="kr" href="#memory"><span class="kr-topic">Generalization</span><span class="kr-num">0.5–1.5</span><span class="kr-lbl">lower perplexity on out-of-domain FinePDFs</span><span class="kr-sub">every 1.7B backbone</span><span class="kr-go" aria-hidden="true">→</span></a>
+      <a class="kr" href="#memory"><span class="kr-topic">Memory</span><span class="kr-num">12×</span><span class="kr-lbl">less memory: SW CPLM matches the Full LM</span><span class="kr-sub">copy cache included</span><span class="kr-go" aria-hidden="true">→</span></a>
+      <a class="kr" href="#downstream"><span class="kr-topic">Reasoning</span><span class="kr-num">+1.2–5.1</span><span class="kr-lbl">average points after SFT</span><span class="kr-sub">math, code &amp; instruction following</span><span class="kr-go" aria-hidden="true">→</span></a>
+      <a class="kr" href="#downstream"><span class="kr-topic">Long context</span><span class="kr-num">+4.6–21.3</span><span class="kr-lbl">points on RULER long-context retrieval</span><span class="kr-sub">1.7B base models</span><span class="kr-go" aria-hidden="true">→</span></a>
+      <a class="kr" href="#long-context"><span class="kr-topic">Extrapolation</span><span class="kr-num">6.4–7.0</span><span class="kr-lbl">perplexity at 16k tokens, 4× the training length</span><span class="kr-sub">vanilla: 9.6–11.3, or diverges</span><span class="kr-go" aria-hidden="true">→</span></a>
+      <a class="kr" href="#long-context"><span class="kr-topic">Retrieval</span><span class="kr-num">+5–85</span><span class="kr-lbl">points of needle-in-a-haystack accuracy</span><span class="kr-sub">averaged over 1k–64k tokens</span><span class="kr-go" aria-hidden="true">→</span></a>
+      <a class="kr" href="#retrieval"><span class="kr-topic">RAG</span><span class="kr-num">49×</span><span class="kr-lbl">smaller cache: HotpotQA documents read through copy keys only</span><span class="kr-sub">Full keeps 89–95% of its accuracy</span><span class="kr-go" aria-hidden="true">→</span></a>
+      <a class="kr" href="#induction"><span class="kr-topic">Interpretability</span><span class="kr-num">4 vs 13–15</span><span class="kr-lbl">induction heads in the backbone</span><span class="kr-sub">CPLM vs. vanilla, T=128</span><span class="kr-go" aria-hidden="true">→</span></a>
+      <a class="kr" href="#speedrun"><span class="kr-topic">Speedrun</span><span class="kr-num">11.3%</span><span class="kr-lbl">faster NanoGPT speedrun record</span><span class="kr-sub">modded-nanogpt PR #379</span><span class="kr-go" aria-hidden="true">→</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= VIZ ======================= -->
+<section id="viz">
+  <div class="wrap">
+    <h2>What the Copy-Paste head does</h2>
+    <p class="lede">
+      Below, the released 1.7B CPLMs read each text, one token at a time. An arrow is drawn whenever the model routes probability for the
+      next token through the Copy-Paste head: it starts at the context token being copied and ends at the predicted token.
+      <b>Width</b> is the copy mass c&middot;&alpha; sent through that position. <b>Color</b> is the sink probability:
+      <span style="color:var(--cp);font-weight:600">green</span> means the head committed to copying, and
+      <span style="color:var(--sink);font-weight:600">red</span> means it mostly deferred back to the LM head. Hover over (or tap) any token for details.
+    </p>
+
+    <div class="viz-card" data-src="copy_data.json" data-hint="Teacher-forced: the base model reads the given text."></div>
+  </div>
+</section>
+
+<section id="chat">
+  <div class="wrap">
+    <h2>Chatting with the SFT models</h2>
+    <p class="lede">
+      The same view on the Tulu-3 SFT checkpoints (<code>{backbone}_sft</code>). Each model wrote its own answer, using greedy
+      decoding on the mixed LM + CP distribution. The answers are shown unedited, then re-read by the same model to get the copy statistics.
+      Answers differ between backbones, so switching the backbone changes the text.
+    </p>
+    <div class="viz-card" data-src="chat_data.json" data-thr="0.4" data-hint="Model-generated answers, greedy decoding, unedited."></div>
+  </div>
+</section>
+
+<!-- ======================= METHOD ======================= -->
+<section id="method">
+  <div class="wrap">
+    <h2>A second head that points instead of decoding</h2>
+    <div class="method-grid">
+      <div class="method-text">
+        <p>
+          A CPLM keeps the standard LM head and adds a <b>Copy-Paste (CP) head</b> next to it. The CP head scores every
+          earlier position with a query and key projection of the final hidden states, as in self-attention. It then turns
+          those scores into a distribution over tokens by summing positions that hold the same token.
+        </p>
+        <div class="tex" data-tex="\begin{gathered} \alpha_t(\tau) = \operatorname{softmax}_{\tau}\!\big(k_\tau^{\top} q_t / \sqrt{D}\big) \\[4pt] p_{\mathrm{CP}}(v) = \textstyle\sum_{\tau:\, x_\tau = v} \alpha_t(\tau) \end{gathered}"></div>
+        <p>
+          The LM head decides <i>when</i> to copy, through a dummy <code>&lt;copy&gt;</code> token in its vocabulary
+          (gate <span class="ink-cp">c<sub>t</sub></span>). A learnable <code>&lt;sink&gt;</code> key lets the CP head
+          hand control back to the LM head (<span class="ink-sink">s<sub>t</sub></span>) when nothing in context is worth copying.
+        </p>
+        <div class="tex" data-tex="\begin{gathered} p(v) = (1-\lambda_t)\, p_{\mathrm{LM}}(v) + \lambda_t\, p_{\mathrm{CP}}(v) \\[4pt] \lambda_t = \htmlClass{ink-cp}{c_t}\,(1-\htmlClass{ink-sink}{s_t}) \end{gathered}"></div>
+        <p>
+          Training uses plain next-token cross-entropy, with no auxiliary loss and no copy supervision. The CP head adds
+          two D&times;D matrices, which is 0.5% of the parameters and 3% of the compute at 1.7B.
+        </p>
+        <div class="callout">
+          <b>Why it helps.</b> The LM head squeezes a V-dimensional logit gradient through a D-dimensional bottleneck
+          and loses over 99% of it. The CP head's output space is the <i>t</i> context positions instead of the vocabulary,
+          which opens a second, much wider gradient path into the backbone.
+        </div>
+      </div>
+
+      <figure class="mech" aria-label="One prediction of the 1.7B CPLM, broken down by head">
+        <div class="mech-context"><span class="mech-dim">…</span><span id="mech-ctx"></span> <span class="mech-blank">?</span></div>
+        <div class="mech-cols">
+          <div class="mech-card">
+            <div class="mech-title"><span class="dot vanilla"></span>LM head</div>
+            <div class="mech-gate" id="mech-gate"></div>
+            <div class="mech-bars" id="mech-lm"></div>
+          </div>
+          <div class="mech-card">
+            <div class="mech-title"><span class="dot cp"></span>Copy-Paste head</div>
+            <div class="mech-bars" id="mech-cp"></div>
+          </div>
+          <div class="mech-card">
+            <div class="mech-title">Prediction</div>
+            <div class="mech-bars" id="mech-mix"></div>
+          </div>
+        </div>
+        <div class="mech-legend"><span><i style="background:var(--vanilla)"></i>from the LM head</span><span><i style="background:var(--cp)"></i>copied</span><span><i style="background:var(--sink)"></i>sink</span><span id="mech-lam"></span></div>
+        <figcaption>One real prediction of the 1.7B Full CPLM, from the Lovelace text above. The LM head alone prefers
+          <i>engine</i>, but it also emits <code>&lt;copy&gt;</code> with probability <b id="mech-c"></b>. The CP head points back at the two
+          earlier mentions of <i>Analytical</i>, and the mixture predicts the right word.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= RESULTS ======================= -->
+<section id="results">
+  <div class="wrap">
+    <h2>Better at every scale, on every backbone</h2>
+    <p class="lede">We pretrain models from 135M to 1.7B parameters on up to 200B FineWeb-Edu tokens, with three backbones:
+      full attention, sliding window (w=256), and a 3:1 hybrid of the two. Both arms share the SmolLM2 recipe and every hyperparameter.</p>
+    <div class="key"><span><span class="dot cp"></span>CPLM</span><span><span class="dot vanilla"></span>Vanilla LM</span><span class="key-note">Hover any chart for exact values.</span></div>
+
+    <!-- 01 -->
+    <article id="training" class="chapter">
+      <header class="ch-head">
+        <div><h3>Faster training</h3>
+          <p>At 1.7B, CPLMs reach the final loss of their vanilla counterparts with 1.2&times; fewer tokens on Full and Hybrid backbones, and 1.5&times; fewer with sliding windows. At 360M it is 1.25&ndash;1.5&times;, and at 135M 1.5&ndash;1.8&times;.</p></div>
+      </header>
+      <div class="fig" data-fig="train" data-needs="train_curves">
+        <div class="fig-top"><div class="fig-ctl"></div></div>
+        <div class="fig-body grid-3"></div>
+        <div class="fig-fallback paper">
+          <img class="legend-img" src="figs/val_nll_curves_legend.svg" alt="">
+          <div class="row-figs c2"><img src="figs/val_nll_curves_135M.svg" alt="Validation loss curves at 135M"><img src="figs/val_nll_curves_1p7B.svg" alt="Validation loss curves at 1.7B"></div>
+        </div>
+        <p class="fig-cap">FineWeb-Edu validation loss over training, before the learning-rate cooldown.</p>
+      </div>
+    </article>
+
+    <!-- 02 -->
+    <article id="memory" class="chapter">
+      <header class="ch-head">
+        <div><h3>More out of every byte of memory</h3>
+          <p>A sliding-window CPLM matches the full-attention LM's perplexity while caching 12&times; less per token, including the copy keys.
+            At every window size, CPLMs push the memory/perplexity frontier down.</p></div>
+      </header>
+      <div class="split">
+        <div class="fig" data-fig="memory" data-needs="mem_vs_ppl_1p7B">
+          <div class="fig-body"></div>
+          <div class="fig-fallback paper"><img src="figs/mem_vs_ppl_norm.svg" alt="FinePDFs perplexity vs memory for 1.7B models"></div>
+          <p class="fig-cap">1.7B models. Arrows go from each vanilla model to its CPLM.</p>
+        </div>
+        <div class="fig" data-fig="window" data-needs="window_sweep_135M">
+          <div class="fig-top"><div class="fig-ctl"></div></div>
+          <div class="fig-body grid-2"></div>
+          <div class="fig-fallback paper">
+            <img class="legend-img" src="figs/ppl_vs_memory_norm_legend.svg" alt="">
+            <img src="figs/ppl_vs_memory_norm_finepdf.svg" alt="Perplexity vs memory across window sizes at 135M">
+          </div>
+          <p class="fig-cap">135M models across sliding-window sizes from 32 to 1,024.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 03 -->
+    <article id="downstream" class="chapter">
+      <header class="ch-head">
+        <div><h3>The standout downstream results</h3>
+          <p>Gains show up on every benchmark family and every 1.7B backbone. They are largest where copying matters: long-context retrieval, chain-of-thought math after fine-tuning, and in-context examples. Each card shows the three backbones.</p></div>
+      </header>
+      <div class="highlights"></div>
+      <details class="all-results">
+        <summary>All benchmark numbers</summary>
+        <div class="split">
+          <div class="fig show-table" data-table="zeroshot"><div class="fig-top"><span class="fig-title">Zero-shot, 1.7B base models</span></div><div class="fig-body"></div><div class="fig-table table-wrap"></div></div>
+          <div class="fig show-table" data-table="sft"><div class="fig-top"><span class="fig-title">After SFT on Tulu-3</span></div><div class="fig-body"></div><div class="fig-table table-wrap"></div></div>
+        </div>
+        <div class="fig show-table" data-table="longctx"><div class="fig-top"><span class="fig-title">Long-context benchmarks</span></div><div class="fig-body"></div><div class="fig-table table-wrap"></div></div>
+      </details>
+    </article>
+
+    <!-- 04 -->
+    <article id="long-context" class="chapter">
+      <header class="ch-head">
+        <div><h3>Long context, beyond the training length</h3>
+          <p>On 16k-token documents, 4&times; the pretraining context, CPLM perplexity keeps falling while every vanilla model degrades.
+            The CP head is used more as the context grows. The SW CPLM copies from more than 2,000 tokens back, far beyond its 256-token window.</p></div>
+      </header>
+      <div class="fig" data-fig="rolling" data-needs="rolling16k">
+        <div class="fig-top"><div class="fig-ctl"></div></div>
+        <div class="fig-body grid-3"></div>
+        <div class="fig-fallback paper">
+          <img class="legend-img" src="figs/val_nll_curves_legend.svg" alt="">
+          <div class="row-figs c3"><img src="figs/rolling16k_5000_ppl.svg" alt="Rolling perplexity"><img src="figs/rolling16k_5000_gate.svg" alt="Copy gate by position"><img src="figs/rolling16k_5000_sink.svg" alt="Sink by position"></div>
+        </div>
+        <p class="fig-cap">Averages over 5,000 FinePDFs documents. Full and Hybrid models use YaRN (&times;4).</p>
+      </div>
+
+      <div class="fig" data-fig="niah" data-needs="niah">
+        <div class="fig-top"><span class="fig-title">Needle in a haystack, 1k to 64k tokens</span></div>
+        <div class="fig-body niah"></div>
+        <div class="fig-fallback paper"><img src="figs/niah_heatmap.svg" alt="Needle-in-a-haystack heatmaps"></div>
+        <p class="fig-cap">Retrieval accuracy (%) of a 7-digit number by needle depth and context length, up to 16&times; the training context.
+          With a window of only 256 tokens, the SW CPLM finds the needle almost everywhere.</p>
+      </div>
+
+    </article>
+
+    <!-- 05 -->
+    <article id="retrieval" class="chapter">
+      <header class="ch-head">
+        <div><h3>Retrieval through the copy cache alone</h3>
+          <p>On HotpotQA with up to 500 distractor documents, each document can be encoded once and read <i>only</i> through its copy keys.
+            CPLMs keep 90&ndash;97% of their accuracy that way, and match or beat models that keep every document in their KV cache, with a 50&times; smaller cache.</p></div>
+      </header>
+      <div class="fig schema-fig" data-fig="hotpotSchema" data-needs="hotpot">
+        <div class="fig-top"><div class="fig-ctl"></div></div>
+        <div class="fig-body"></div>
+        <p class="fig-cap">Each panel is the model drawn bottom-up: tokens, then layers 1 to 24 with their KV cache, then the copy keys. Grey is kept, hatched is thrown away, green is the copy cache. Pick a backbone and a number of distractors; exact match and memory are measured HotpotQA numbers.</p>
+      </div>
+      <div class="fig" data-fig="hotpot" data-needs="hotpot">
+        <div class="fig-top"><div class="fig-ctl"></div></div>
+        <div class="fig-body grid-2"></div>
+        <div class="fig-fallback paper">
+          <img class="legend-img" src="figs/hotpot_yarn4_distractor_legend.svg" alt="">
+          <div class="row-figs c3"><img src="figs/hotpot_yarn4_distractor_u550.svg" alt="HotpotQA docs visible"><img src="figs/hotpot_yarn4_distractor_dropdocs.svg" alt="HotpotQA docs dropped"><img src="figs/hotpot_doc_memory.svg" alt="Memory per document"></div>
+        </div>
+        <p class="fig-cap">Exact match after fine-tuning on HotpotQA (distractor setting). In the right panel, the vanilla control reads documents through its last-layer keys and values, which take twice the memory of the CP head cache.</p>
+      </div>
+    </article>
+
+    <!-- 06 -->
+    <article id="why" class="chapter">
+      <header class="ch-head">
+        <div><h3>Why it works: a wider gradient channel</h3>
+          <p>The LM head discards over 99% of the logit gradient. The CP query path keeps up to 87% of it at early positions. On a trivial
+            repetition task, vanilla models fail once the vocabulary is large, while CPLMs solve it at every size. Blocking gradients through
+            the CP head removes most of the gains. Byte-level models, which have no bottleneck, gain nothing.</p></div>
+      </header>
+      <div class="fig schema-fig" data-fig="gradSchema" data-needs="nullspace">
+        <div class="fig-top"><div class="fig-ctl"></div></div>
+        <div class="fig-body"></div>
+        <p class="fig-cap">The backward pass through each head. Ribbon width is gradient norm: what does not make it through is lost to the head's nullspace. Slide along the sequence to see the CP head's share shrink at later positions, where it has more keys.</p>
+      </div>
+      <div class="fig" data-fig="bottleneck" data-needs="nullspace,spamlang">
+        <div class="fig-body grid-2"></div>
+        <div class="fig-fallback paper">
+          <div class="row-figs c2" style="align-items:end">
+            <div><img class="legend-img" src="figs/lmhead_nullspace_seqlen_legend.svg" alt=""><img src="figs/lmhead_nullspace_seqlen.svg" alt="Gradient lost per pathway"></div>
+            <div><img class="legend-img" style="max-width:240px" src="figs/spamlang_bottleneck_legend.svg" alt=""><img src="figs/spamlang_bottleneck_accuracy.svg" alt="SpamLang accuracy"></div>
+          </div>
+        </div>
+        <p class="fig-cap">Left: 135M Full CPLM on 2,048-token FineWeb-Edu sequences; <i>random</i> is a random matrix shaped like the CP head output. Right: 135M models with a fixed hidden size of 576.</p>
+      </div>
+    </article>
+
+    <!-- 07 -->
+    <article id="induction" class="chapter">
+      <header class="ch-head">
+        <div><h3>Better induction with fewer heads</h3>
+          <p>CPLMs copy repeated random sequences almost perfectly at every length, with far fewer induction heads in their backbone:
+            4 at T=128, against 13&ndash;15 for vanilla models. The CP head takes over copying work that vanilla models spread across many attention heads.</p></div>
+      </header>
+      <div class="fig" data-fig="induction" data-needs="induction">
+        <div class="fig-top"><div class="fig-ctl"></div></div>
+        <div class="fig-body grid-2"></div>
+        <div class="fig-maps grid-2"></div>
+        <div class="fig-fallback paper">
+          <img class="legend-img" src="figs/val_nll_curves_legend.svg" alt="">
+          <div class="row-figs c3"><img src="figs/induction_sweep_nll.svg" alt="Induction NLL"><img src="figs/induction_sweep_heads_0p3.svg" alt="Induction head count"><img src="figs/induction_map_full_T128.svg" alt="Induction score map"></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 08 -->
+    <article id="speedrun" class="chapter last">
+      <header class="ch-head">
+        <div><h3>A NanoGPT speedrun record</h3>
+          <p>Adding the CP head to <a href="https://github.com/KellerJordan/modded-nanogpt">modded-nanogpt</a> improved the previous speedrun record by
+            <b>11.3%</b> (<a href="https://github.com/KellerJordan/modded-nanogpt/pull/379">PR #379</a>). That is the largest architecture-centric speed-up,
+            and the second largest overall, since December 2024.</p></div>
+      </header>
+    </article>
+  </div>
+</section>
+
+<!-- ======================= MODELS ======================= -->
+<section id="models">
+  <div class="wrap narrow">
+    <h2>Use the models</h2>
+    <p>All 1.7B checkpoints are on the Hugging Face Hub (<a href="https://huggingface.co/collections/nthngdy/cplm">collection</a>). Each backbone
+      (<code>full</code>, <code>hybrid</code>, <code>sw</code>) lives on its own branch, alongside intermediate and Tulu-3 SFT checkpoints (<code>{backbone}_sft</code>).</p>
+<pre class="bib"><code>from transformers import AutoModelForCausalLM, AutoTokenizer
+
+repo = "nthngdy/cplm-1.7B"
+tok = AutoTokenizer.from_pretrained(repo, revision="full")
+model = AutoModelForCausalLM.from_pretrained(repo, revision="full", trust_remote_code=True)
+
+# "natural" (default), "no_copy" (LM head only) or "force_copy" (CP head only)
+model.config.inference_mode = "natural"</code></pre>
+  </div>
+</section>
+
+<!-- ======================= BIBTEX ======================= -->
+<section id="bibtex">
+  <div class="wrap narrow">
+    <h2>Citation</h2>
+<pre class="bib" id="bib"><button class="copy-btn" type="button" id="copy-bib">Copy</button><code>@article{godey2026copypaste,
+  title   = {Copy-Paste Language Models},
+  author  = {Godey, Nathan and Artzi, Yoav},
+  journal = {arXiv preprint arXiv:2610.19247},
+  year    = {2026},
+  url     = {https://arxiv.org/abs/2610.19247}
+}</code></pre>
+  </div>
+</section>
+
+<footer class="wrap">Copy-pasted with care by Nathan Godey &amp; Yoav Artzi, Cornell University.</footer>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+(() => {
+  const BB_LABEL = { full: "Full", hybrid: "Hybrid 3:1", sw: "SW-256" };
+  const NS = "http://www.w3.org/2000/svg";
+  const q = new URLSearchParams(location.search);
+  const tip = document.getElementById("tip");
+  let markerSeq = 0;
+
+  const sinkColor = (s) => {          // green -> amber -> red
+    s = Math.max(0, Math.min(1, s));
+    return s < 0.5
+      ? `color-mix(in oklab, var(--mid) ${Math.round(s * 200)}%, var(--cp))`
+      : `color-mix(in oklab, var(--sink) ${Math.round((s - 0.5) * 200)}%, var(--mid))`;
+  };
+  const widthFor = (m) => 0.8 + 6 * Math.sqrt(m);   // sqrt so small copies stay visible
+  const fmt = (x) => x < 0.005 ? x.toExponential(0) : x.toFixed(2);
+  const showTok = (t) => t === "\n" ? "↵" : t.replace(/\n/g, "↵").replace(/^ /, "␣");
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const CARD = (hint) => `
+    <div class="controls">
+      <div class="ctl"><span class="ctl-label">Example</span><div class="seg ex-seg" role="group" aria-label="Example"></div></div>
+      <div class="ctl"><span class="ctl-label">Backbone</span><div class="seg bb-seg" role="group" aria-label="Backbone"></div></div>
+      <div class="ctl"><label class="ctl-label">Min. copy mass <input class="thr" type="range" min="0.02" max="0.6" step="0.01" value="0.25"></label><output class="thr-out">0.25</output></div>
+    </div>
+    <div class="ex-head"><div class="ex-blurb"></div><div class="ex-stats"></div></div>
+    <div class="text-stage"><svg class="arrows" aria-hidden="true"></svg><div class="tokens"></div><svg class="arrows arrows-front" aria-hidden="true"></svg></div>
+    <div class="legend">
+      <div class="item"><span>Copy mass</span>
+        <svg width="96" height="18" aria-hidden="true">
+          <line x1="4" y1="9" x2="26" y2="9" stroke="var(--cp)" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="36" y1="9" x2="58" y2="9" stroke="var(--cp)" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="68" y1="9" x2="92" y2="9" stroke="var(--cp)" stroke-width="6.5" stroke-linecap="round"/>
+        </svg><span class="mono" style="font-size:11px;color:var(--muted)">0.1 · 0.5 · 1.0</span></div>
+      <div class="item"><span>Sink</span><div><div class="gradient"></div><div class="ticks"><span>0</span><span>0.5</span><span>1</span></div></div></div>
+      <div class="item"><span class="tok target" style="padding:2px 6px">token</span><span>shaded by copy gate &lambda; = c(1&minus;s)</span></div>
+      <span class="hint">${hint}</span>
+    </div>`;
+
+  function CopyViz(card) {
+    card.innerHTML = CARD(card.dataset.hint || "");
+    const el = (c) => card.querySelector(c);
+    const stage = el(".text-stage"), svg = el(".arrows"), front = el(".arrows-front"), tokensEl = el(".tokens");
+    const state = { ex: 0, bb: q.get("bb") || "full", thr: +(card.dataset.thr || 0.25), hover: null, pinned: null };
+    el(".thr").value = state.thr; el(".thr-out").textContent = state.thr.toFixed(2);
+    let DATA = null, spans = [], arcs = [];
+
+    // one example/backbone pair -> {tokens, roles, stats}
+    const view = () => {
+      const ex = DATA.examples[state.ex];
+      return ex.by ? ex.by[state.bb] : { tokens: ex.tokens, roles: null, stats: ex.stats[state.bb], collapse: ex.collapse };
+    };
+
+    function seg(root, items, current, onPick) {
+      root.innerHTML = "";
+      items.forEach(([key, label]) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.textContent = label;
+        b.setAttribute("aria-pressed", String(key === current));
+        b.addEventListener("click", () => onPick(key));
+        root.appendChild(b);
+      });
+    }
+
+    function renderTokens() {
+      const ex = DATA.examples[state.ex], v = view(), st = v.stats;
+      tokensEl.innerHTML = "";
+      tokensEl.classList.toggle("code", ["code", "table", "log"].includes(ex.id));
+      spans = new Array(v.tokens.length).fill(null);
+      const [ca, cb] = v.collapse || [-1, -2];
+      let parent = tokensEl, role = null;
+      v.tokens.forEach((t, i) => {
+        if (v.roles) {
+          const r = v.roles[i];
+          if (r === "t" || /^<\|.*\|>$/.test(t)) return;   // chat-template scaffolding and special tokens
+          if (r !== role) {
+            role = r;
+            parent = document.createElement("div");
+            parent.className = "turn " + (r === "u" ? "user" : "asst");
+            const lab = document.createElement("span");
+            lab.className = "turn-label";
+            lab.textContent = r === "u" ? "User" : `Assistant · ${BB_LABEL[state.bb]} CPLM (SFT)`;
+            parent.appendChild(lab);
+            tokensEl.appendChild(parent);
+          }
+        }
+        if (i === ca) {
+          const chip = document.createElement("span");
+          chip.className = "gap-chip";
+          chip.textContent = `… ${cb - ca + 1} tokens of filler text …`;
+          parent.appendChild(chip);
+          parent.appendChild(document.createTextNode(" "));
+        }
+        if (i >= ca && i <= cb) return;
+        const sp = document.createElement("span");
+        sp.className = "tok"; sp.textContent = t; sp.dataset.i = i;
+        if (i === 0 && t === "<bos>") sp.classList.add("bos");
+        if (i > 0 && (!v.roles || v.roles[i] === "a")) {
+          const r = st[i - 1], lam = r.c * (1 - r.s);
+          if (lam > 0.05) {
+            sp.classList.add("target");
+            sp.style.setProperty("--cp-soft", `color-mix(in oklab, var(--cp) ${Math.round(lam * 22)}%, transparent)`);
+          }
+        }
+        spans[i] = sp;
+        parent.appendChild(sp);
+      });
+
+      // stats over the predicted tokens (answer only for chat)
+      const idx = st.map((_, t) => t).filter((t) => !v.roles || v.roles[t + 1] === "a");
+      const n = Math.max(1, idx.length);
+      const nll = (k) => -idx.reduce((a, t) => a + Math.log(Math.max(st[t][k], 1e-9)), 0) / n;
+      const lamMean = idx.reduce((a, t) => a + st[t].c * (1 - st[t].s), 0) / n;
+      el(".ex-blurb").textContent = ex.blurb;
+      el(".ex-stats").innerHTML = (v.roles ? `answer: ${idx.length} tokens` : `${v.tokens.length - 1} tokens`) +
+        ` · mean &lambda; <b>${lamMean.toFixed(2)}</b> · NLL <b>${nll("pm").toFixed(2)}</b> ` +
+        `<span title="Same CPLM, LM head only (renormalised without <copy>)">(LM head alone: ${nll("pl").toFixed(2)})</span>`;
+    }
+
+    function center(sp, base) {
+      const r = sp.getClientRects()[0] || sp.getBoundingClientRect();
+      return { x: r.left + r.width / 2 - base.left, y: r.top - base.top, h: r.height };
+    }
+
+    function renderArrows() {
+      const v = view();
+      const base = stage.getBoundingClientRect();
+      for (const layer of [svg, front]) {
+        layer.setAttribute("width", base.width);
+        layer.setAttribute("height", base.height);
+        layer.innerHTML = "";
+      }
+      const defs = document.createElementNS(NS, "defs");
+      svg.appendChild(defs);
+      arcs = [];
+      const items = [];
+      v.stats.forEach((r, t) => {
+        const tgt = t + 1;
+        if (!spans[tgt] || (v.roles && v.roles[tgt] !== "a")) return;   // chat: skip prompt-to-prompt copies
+        r.src.forEach(([j, m]) => { if (spans[j] && v.tokens[j] !== "<bos>") items.push({ tgt, j, m, s: r.s }); });
+      });
+      items.sort((a, b) => a.m - b.m);   // strongest on top
+      const pos = new Map();
+      const P = (i) => { if (!pos.has(i)) pos.set(i, center(spans[i], base)); return pos.get(i); };
+
+      for (const it of items) {
+        const a = P(it.j), b = P(it.tgt);
+        let d;
+        if (Math.abs(b.y - a.y) < 4) {
+          // same line: arc above
+          const lift = Math.min(60, 12 + 0.2 * Math.abs(b.x - a.x));
+          d = `M${a.x},${a.y + 3} Q${(a.x + b.x) / 2},${a.y + 3 - lift} ${b.x},${b.y + 2}`;
+        } else {
+          // leave the source from below, enter the target from above, bulging sideways
+          const ay = a.y + a.h - 3, by = b.y + 3, dy = by - ay;
+          const k = Math.min(140, 22 + 0.18 * Math.abs(dy));
+          const dir = b.x >= a.x ? 1 : -1;
+          d = `M${a.x},${ay} C${a.x + dir * k * 0.6},${ay + dy * 0.45} ${b.x - dir * k * 0.15},${by - Math.min(40, Math.abs(dy) * 0.35)} ${b.x},${by - 1}`;
+        }
+        const color = sinkColor(it.s), w = widthFor(it.m);
+        const mid = `m${markerSeq++}`;
+        const mk = document.createElementNS(NS, "marker");
+        mk.setAttribute("id", mid); mk.setAttribute("viewBox", "0 0 10 10");
+        mk.setAttribute("refX", "7"); mk.setAttribute("refY", "5");
+        mk.setAttribute("markerUnits", "userSpaceOnUse");
+        const ms = Math.max(7, w * 2.2);
+        mk.setAttribute("markerWidth", ms); mk.setAttribute("markerHeight", ms);
+        mk.setAttribute("orient", "auto");
+        const tri = document.createElementNS(NS, "path");
+        tri.setAttribute("d", "M0,1 L9,5 L0,9 z"); tri.style.fill = color;
+        mk.appendChild(tri); defs.appendChild(mk);
+
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", d); p.setAttribute("class", "arc");
+        p.style.stroke = color; p.style.strokeWidth = w;
+        p.style.setProperty("--op", (0.12 + 0.4 * Math.min(1, it.m)).toFixed(2));
+        p.setAttribute("marker-end", `url(#${mid})`);
+        p.dataset.base = it.m >= state.thr ? "1" : "0";
+        svg.appendChild(p);
+        arcs.push({ path: p, tgt: it.tgt, src: it.j });
+      }
+      applyFocus();
+    }
+
+    const focusIdx = () => state.pinned ?? state.hover;
+    function applyFocus() {
+      const f = focusIdx();
+      spans.forEach((sp) => sp && sp.classList.remove("hl", "src"));
+      svg.classList.toggle("dim", f != null);
+      for (const a of arcs) {
+        const on = f != null && a.tgt === f;
+        a.path.classList.toggle("on", on);
+        a.path.style.display = (a.path.dataset.base === "1" || on) ? "" : "none";
+        const layer = on ? front : svg;
+        if (a.path.parentNode !== layer) layer.appendChild(a.path);
+        if (on && spans[a.src]) spans[a.src].classList.add("src");
+      }
+      if (f != null && spans[f]) spans[f].classList.add("hl");
+    }
+
+    function showTip(i, sp) {
+      const v = view();
+      if (i < 1) { tip.classList.remove("show"); return; }
+      const r = v.stats[i - 1], lam = r.c * (1 - r.s);
+      const srcs = r.src.filter(([j]) => spans[j] && v.tokens[j] !== "<bos>").slice(0, 4).map(([j, m]) =>
+        `<div class="src-row"><span><span class="mono">${esc(showTok(v.tokens[j]))}</span> <span style="color:var(--muted)">#${j}</span></span><span>${fmt(m)}</span></div>`).join("");
+      tip.innerHTML =
+        `<div class="tt-tok">${esc(showTok(v.tokens[i]))} <span style="color:var(--muted);font-weight:400;font-size:12px">#${i} · ${BB_LABEL[state.bb]}</span></div><hr>` +
+        `<div class="row"><span><span class="swatch" style="background:var(--cp)"></span>&lt;copy&gt; gate c</span><span>${fmt(r.c)}</span></div>` +
+        `<div class="row"><span><span class="swatch" style="background:var(--sink)"></span>sink s</span><span>${fmt(r.s)}</span></div>` +
+        `<div class="row"><span>copy mass &lambda; = c(1&minus;s)</span><span><b>${fmt(lam)}</b></span></div><hr>` +
+        `<div class="row"><span>p(token), CPLM</span><span><b>${fmt(r.pm)}</b></span></div>` +
+        `<div class="row"><span>p(token), LM head alone</span><span>${fmt(r.pl)}</span></div>` +
+        (srcs ? `<hr><div style="color:var(--muted);margin-bottom:2px">Copied from</div>${srcs}` : "");
+      tip.classList.add("show");
+      const rr = sp.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+      const x = Math.max(8, Math.min(window.innerWidth - tw - 8, rr.left + rr.width / 2 - tw / 2));
+      let y = rr.bottom + 10;
+      if (y + th > window.innerHeight - 8) y = rr.top - th - 10;
+      tip.style.left = x + "px"; tip.style.top = y + "px";
+    }
+
+    tokensEl.addEventListener("mouseover", (e) => {
+      const sp = e.target.closest(".tok"); if (!sp) return;
+      state.hover = +sp.dataset.i; applyFocus(); showTip(state.hover, sp);
+    });
+    tokensEl.addEventListener("mouseleave", () => {
+      state.hover = null; applyFocus();
+      if (state.pinned == null) tip.classList.remove("show");
+    });
+    tokensEl.addEventListener("click", (e) => {
+      const sp = e.target.closest(".tok");
+      if (!sp) { state.pinned = null; applyFocus(); tip.classList.remove("show"); return; }
+      const i = +sp.dataset.i;
+      state.pinned = state.pinned === i ? null : i;
+      applyFocus();
+      if (state.pinned != null) showTip(i, sp); else tip.classList.remove("show");
+    });
+    document.addEventListener("click", (e) => {
+      if (!stage.contains(e.target) && state.pinned != null) { state.pinned = null; applyFocus(); tip.classList.remove("show"); }
+    });
+    el(".thr").addEventListener("input", (e) => {
+      state.thr = +e.target.value; el(".thr-out").textContent = state.thr.toFixed(2);
+      for (const a of arcs) a.path.dataset.base = "0";
+      renderArrows();
+    });
+
+    function render() {
+      seg(el(".ex-seg"), DATA.examples.map((e, i) => [i, e.title]), state.ex, (i) => { state.ex = i; state.pinned = null; render(); });
+      seg(el(".bb-seg"), DATA.models.map((m) => [m, BB_LABEL[m] || m]), state.bb, (m) => { state.bb = m; state.pinned = null; render(); });
+      renderTokens();
+      tip.classList.remove("show");
+      requestAnimationFrame(renderArrows);
+    }
+
+    let rz;
+    new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => DATA && renderArrows()); }).observe(tokensEl);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => DATA && renderArrows());
+
+    fetch(card.dataset.src).then((r) => r.json()).then((d) => {
+      DATA = d;
+      const ei = d.examples.findIndex((e) => e.id === q.get("ex"));
+      if (ei >= 0) state.ex = ei;
+      if (!d.models.includes(state.bb)) state.bb = d.models[0];
+      render();
+    }).catch(() => { tokensEl.textContent = `Could not load ${card.dataset.src} (serve this page over HTTP).`; });
+  }
+
+  document.querySelectorAll(".viz-card[data-src]").forEach(CopyViz);
+  window.addEventListener("scroll", () => tip.classList.remove("show"), { passive: true });
+
+  // bibtex copy
+  const cb = document.getElementById("copy-bib");
+  cb.addEventListener("click", () => {
+    const txt = document.querySelector("#bib code").textContent;
+    navigator.clipboard && navigator.clipboard.writeText(txt).then(() => {
+      cb.textContent = "Copied"; setTimeout(() => (cb.textContent = "Copy"), 1400);
+    });
+  });
+})();
+</script>
+<script>
+// ---- method diagram: one real prediction of the 1.7B Full CPLM
+(() => {
+  const M = {"context": " be the first computer program: an algorithm designed to be carried out by the", "c": 0.8387, "s": 0.123,
+    "lm_top": [[" engine", 0.4991], [" machine", 0.2752], [" analytical", 0.0983], [" Analytical", 0.0555], [" (", 0.0394]],
+    "cp_pos": [[44, " Analytical", 0.3952], [76, " Analytical", 0.3752], [31, " Analytical", 0.0682], [77, " Engine", 0.0209]],
+    "cp_top": [[" Analytical", 0.8386], [" Engine", 0.0338]],
+    "mix_top": [[" Analytical", 0.718], [" engine", 0.132], [" machine", 0.0728], [" Engine", 0.0284], [" analytical", 0.026]]};
+  const target = " Analytical";
+  const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const bar = (lab, v, parts, hit, small) => `<div class="mb${hit ? " hit" : ""}"><span class="lab">${lab}${small ? `<small>${small}</small>` : ""}</span>` +
+    `<span class="val">${v.toFixed(2)}</span><span class="track">${parts.map(([w, c]) => `<i style="width:${(w * 100).toFixed(1)}%;background:${c}"></i>`).join("")}</span></div>`;
+  document.getElementById("mech-ctx").textContent = M.context;
+  document.getElementById("mech-c").textContent = M.c.toFixed(2);
+  document.getElementById("mech-gate").innerHTML = bar("&lt;copy&gt;", M.c, [[M.c, "var(--cp)"]], false);
+  document.getElementById("mech-lm").innerHTML = M.lm_top.map(([t, p]) => bar(esc(t.trim()), p, [[p, "var(--vanilla)"]], t === target)).join("");
+  document.getElementById("mech-cp").innerHTML =
+    bar("&lt;sink&gt;", M.s, [[M.s, "var(--sink)"]], false) +
+    M.cp_pos.map(([j, t, a]) => bar(esc(t.trim()), a, [[a, "var(--cp)"]], t === target, "#" + j)).join("");
+  const lam = M.c * (1 - M.s);
+  const cp = Object.fromEntries(M.cp_top);
+  document.getElementById("mech-mix").innerHTML = M.mix_top.map(([t, p]) => {
+    const fromCp = M.c * (cp[t] || 0), fromLm = Math.max(0, p - fromCp);
+    return bar(esc(t.trim()), p, [[fromLm, "var(--vanilla)"], [fromCp, "var(--cp)"]], t === target);
+  }).join("");
+  document.getElementById("mech-lam").innerHTML = `&lambda; = c(1&minus;s) = ${lam.toFixed(2)}`;
+})();
+window.addEventListener("load", () => {
+  if (!window.katex) return;
+  document.querySelectorAll(".tex[data-tex]").forEach((el) => {
+    try { katex.render(el.dataset.tex, el, { displayMode: true, throwOnError: false, trust: true, strict: false }); } catch (e) { el.textContent = el.dataset.tex; }
+  });
+});
+</script>
+<script>
+// hero: a copy arrow from "Copy" to "Paste"
+(() => {
+  const svg = document.getElementById("title-arrow"), t = document.getElementById("title");
+  const a = document.getElementById("w-copy"), b = document.getElementById("w-paste");
+  const draw = () => {
+    const T = t.getBoundingClientRect(), A = a.getBoundingClientRect(), B = b.getBoundingClientRect();
+    svg.setAttribute("width", T.width); svg.setAttribute("height", T.height);
+    const x0 = A.left + A.width * 0.5 - T.left, x1 = B.left + B.width * 0.45 - T.left, y = A.top - T.top + 4;
+    const lift = Math.max(30, (x1 - x0) * 0.32);
+    svg.innerHTML = `<defs><marker id="ta" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4.2" markerHeight="4.2" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--cp);stroke:none"/></marker></defs>` +
+      `<path d="M${x0},${y} Q${(x0 + x1) / 2},${y - lift} ${x1},${y + 2}" marker-end="url(#ta)"/>`;
+  };
+  new ResizeObserver(draw).observe(t);
+  document.fonts && document.fonts.ready.then(draw);
+})();
+</script>
+<script src="charts.js"></script>
+</body>
+</html>
