@@ -702,12 +702,10 @@ footer { font-size: 15px; font-weight: 700; text-align: center; padding: 30px 0 
     <p class="lede">
       Below, the released 1.7B CPLMs read each text, one token at a time. An arrow is drawn whenever the model routes probability for the
       next token through the Copy-Paste head: it starts at the context token being copied and ends at the predicted token.
-      <b>Width</b> is the copy mass c&middot;&alpha; sent through that position. <b>Color</b> is the sink probability:
-      <span style="color:var(--cp);font-weight:600">green</span> means the head committed to copying, and
-      <span style="color:var(--sink);font-weight:600">red</span> means it mostly deferred back to the LM head. Hover over (or tap) any token for details.
+      <b>Width</b> is the share of the prediction copied from that position; summed over positions, it is the copy mass &lambda;. For the base models, which read a fixed text, only copies of the token that actually comes next are counted. Hover over (or tap) any token for details.
     </p>
 
-    <div class="viz-card" data-src="copy_data.json" data-hint="Teacher-forced: the base model reads the given text."></div>
+    <div class="viz-card" data-src="copy_data.json" data-correct="1" data-hint="Teacher-forced: the base model reads the given text."></div>
   </div>
 </section>
 
@@ -993,18 +991,12 @@ model.config.inference_mode = "natural"</code></pre>
   const tip = document.getElementById("tip");
   let markerSeq = 0;
 
-  const sinkColor = (s) => {          // green -> amber -> red
-    s = Math.max(0, Math.min(1, s));
-    return s < 0.5
-      ? `color-mix(in oklab, var(--mid) ${Math.round(s * 200)}%, var(--cp))`
-      : `color-mix(in oklab, var(--sink) ${Math.round((s - 0.5) * 200)}%, var(--mid))`;
-  };
   const widthFor = (m) => 0.8 + 6 * Math.sqrt(m);   // sqrt so small copies stay visible
-  const fmt = (x) => x < 0.005 ? x.toExponential(0) : x.toFixed(2);
+  const fmt = (x) => x.toFixed(2);
   const showTok = (t) => t === "\n" ? "↵" : t.replace(/\n/g, "↵").replace(/^ /, "␣");
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  const CARD = (hint) => `
+  const CARD = (hint, correct) => `
     <div class="controls">
       <div class="ctl"><span class="ctl-label">Example</span><div class="seg ex-seg" role="group" aria-label="Example"></div></div>
       <div class="ctl"><span class="ctl-label">Backbone</span><div class="seg bb-seg" role="group" aria-label="Backbone"></div></div>
@@ -1019,13 +1011,15 @@ model.config.inference_mode = "natural"</code></pre>
           <line x1="36" y1="9" x2="58" y2="9" stroke="var(--cp)" stroke-width="3.5" stroke-linecap="round"/>
           <line x1="68" y1="9" x2="92" y2="9" stroke="var(--cp)" stroke-width="6.5" stroke-linecap="round"/>
         </svg><span class="mono" style="font-size:11px;color:var(--muted)">0.1 · 0.5 · 1.0</span></div>
-      <div class="item"><span>Sink</span><div><div class="gradient"></div><div class="ticks"><span>0</span><span>0.5</span><span>1</span></div></div></div>
-      <div class="item"><span class="tok target" style="padding:2px 6px">token</span><span>shaded by copy gate &lambda; = c(1&minus;s)</span></div>
+      <div class="item"><span class="tok target" style="padding:2px 6px">token</span><span>shaded by copy mass &lambda;</span></div>
       <span class="hint">${hint}</span>
     </div>`;
 
   function CopyViz(card) {
-    card.innerHTML = CARD(card.dataset.hint || "");
+    const correctOnly = card.dataset.correct === "1";   // base models: only count copies of the actual next token
+    card.innerHTML = CARD(card.dataset.hint || "", correctOnly);
+    // copy mass that lands on the true next token: p_mix - (1 - lambda) p_LM = c * sum of alpha over positions holding it
+    const onTarget = (r) => Math.max(0, r.pm - (1 - r.c * (1 - r.s)) * r.pl);
     const el = (c) => card.querySelector(c);
     const stage = el(".text-stage"), svg = el(".arrows"), front = el(".arrows-front"), tokensEl = el(".tokens");
     const state = { ex: 0, bb: q.get("bb") || "full", thr: +(card.dataset.thr || 0.25), hover: null, pinned: null };
@@ -1083,7 +1077,7 @@ model.config.inference_mode = "natural"</code></pre>
         sp.className = "tok"; sp.textContent = t; sp.dataset.i = i;
         if (i === 0 && t === "<bos>") sp.classList.add("bos");
         if (i > 0 && (!v.roles || v.roles[i] === "a")) {
-          const r = st[i - 1], lam = r.c * (1 - r.s);
+          const r = st[i - 1], lam = correctOnly ? onTarget(r) : r.c * (1 - r.s);
           if (lam > 0.05) {
             sp.classList.add("target");
             sp.style.setProperty("--cp-soft", `color-mix(in oklab, var(--cp) ${Math.round(lam * 22)}%, transparent)`);
@@ -1097,10 +1091,10 @@ model.config.inference_mode = "natural"</code></pre>
       const idx = st.map((_, t) => t).filter((t) => !v.roles || v.roles[t + 1] === "a");
       const n = Math.max(1, idx.length);
       const nll = (k) => -idx.reduce((a, t) => a + Math.log(Math.max(st[t][k], 1e-9)), 0) / n;
-      const lamMean = idx.reduce((a, t) => a + st[t].c * (1 - st[t].s), 0) / n;
+      const lamMean = idx.reduce((a, t) => a + (correctOnly ? onTarget(st[t]) : st[t].c * (1 - st[t].s)), 0) / n;
       el(".ex-blurb").textContent = ex.blurb;
       el(".ex-stats").innerHTML = (v.roles ? `answer: ${idx.length} tokens` : `${v.tokens.length - 1} tokens`) +
-        ` · mean &lambda; <b>${lamMean.toFixed(2)}</b> · NLL <b>${nll("pm").toFixed(2)}</b> ` +
+        ` · mean copy mass &lambda; <b>${lamMean.toFixed(2)}</b> · NLL <b>${nll("pm").toFixed(2)}</b> ` +
         `<span title="Same CPLM, LM head only (renormalised without <copy>)">(LM head alone: ${nll("pl").toFixed(2)})</span>`;
     }
 
@@ -1124,7 +1118,11 @@ model.config.inference_mode = "natural"</code></pre>
       v.stats.forEach((r, t) => {
         const tgt = t + 1;
         if (!spans[tgt] || (v.roles && v.roles[tgt] !== "a")) return;   // chat: skip prompt-to-prompt copies
-        r.src.forEach(([j, m]) => { if (spans[j] && v.tokens[j] !== "<bos>") items.push({ tgt, j, m, s: r.s }); });
+        r.src.forEach(([j, m]) => {
+          if (!spans[j] || v.tokens[j] === "<bos>") return;
+          if (correctOnly && v.tokens[j] !== v.tokens[tgt]) return;   // only copies of the actual next token
+          items.push({ tgt, j, m, s: r.s });
+        });
       });
       items.sort((a, b) => a.m - b.m);   // strongest on top
       const pos = new Map();
@@ -1144,7 +1142,7 @@ model.config.inference_mode = "natural"</code></pre>
           const dir = b.x >= a.x ? 1 : -1;
           d = `M${a.x},${ay} C${a.x + dir * k * 0.6},${ay + dy * 0.45} ${b.x - dir * k * 0.15},${by - Math.min(40, Math.abs(dy) * 0.35)} ${b.x},${by - 1}`;
         }
-        const color = sinkColor(it.s), w = widthFor(it.m);
+        const color = "var(--cp)", w = widthFor(it.m);
         const mid = `m${markerSeq++}`;
         const mk = document.createElementNS(NS, "marker");
         mk.setAttribute("id", mid); mk.setAttribute("viewBox", "0 0 10 10");
@@ -1189,13 +1187,11 @@ model.config.inference_mode = "natural"</code></pre>
       const v = view();
       if (i < 1) { tip.classList.remove("show"); return; }
       const r = v.stats[i - 1], lam = r.c * (1 - r.s);
-      const srcs = r.src.filter(([j]) => spans[j] && v.tokens[j] !== "<bos>").slice(0, 4).map(([j, m]) =>
+      const srcs = r.src.filter(([j]) => spans[j] && v.tokens[j] !== "<bos>" && (!correctOnly || v.tokens[j] === v.tokens[i])).slice(0, 4).map(([j, m]) =>
         `<div class="src-row"><span><span class="mono">${esc(showTok(v.tokens[j]))}</span> <span style="color:var(--muted)">#${j}</span></span><span>${fmt(m)}</span></div>`).join("");
       tip.innerHTML =
         `<div class="tt-tok">${esc(showTok(v.tokens[i]))} <span style="color:var(--muted);font-weight:400;font-size:12px">#${i} · ${BB_LABEL[state.bb]}</span></div><hr>` +
-        `<div class="row"><span><span class="swatch" style="background:var(--cp)"></span>&lt;copy&gt; gate c</span><span>${fmt(r.c)}</span></div>` +
-        `<div class="row"><span><span class="swatch" style="background:var(--sink)"></span>sink s</span><span>${fmt(r.s)}</span></div>` +
-        `<div class="row"><span>copy mass &lambda; = c(1&minus;s)</span><span><b>${fmt(lam)}</b></span></div><hr>` +
+        `<div class="row"><span><span class="swatch" style="background:var(--cp)"></span>copy mass &lambda;</span><span><b>${fmt(correctOnly ? onTarget(r) : lam)}</b></span></div><hr>` +
         `<div class="row"><span>p(token), CPLM</span><span><b>${fmt(r.pm)}</b></span></div>` +
         `<div class="row"><span>p(token), LM head alone</span><span>${fmt(r.pl)}</span></div>` +
         (srcs ? `<hr><div style="color:var(--muted);margin-bottom:2px">Copied from</div>${srcs}` : "");
