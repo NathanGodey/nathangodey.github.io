@@ -35,7 +35,7 @@ Content changes should only touch `_data/`, `_posts/` and `img/`. Don't edit gen
 
 ## Featured papers (home page)
 
-Set `featured: N` on 3–5 entries; the home page shows them in increasing `N`. Remove the field to unfeature.
+Set `featured: N` on entries; the home page shows them in increasing `N`. `featured: 1` is the large "Featured" paper next to the bio; the next six fill the 3-column grid (keep it at 6 so rows stay full). Featured papers need an `image`. Remove the field to unfeature.
 
 ## When a paper is accepted
 
@@ -45,7 +45,7 @@ Change `venue` and `year`, replace the BibTeX with the proceedings version if on
 
 - Plain, factual wording. No exclamation marks, no emoji, no "excited to share".
 - Dates in news use the arXiv or announcement date. Don't guess dates.
-- Don't add colors, badges, shadows or hover animations; the design is intentionally minimal. New colors go in the tokens at the top of `main.scss`, with a dark-mode value.
+- Font is Lato everywhere. One accent color (`--accent`, used for venue tags and the "Featured" label) plus the link blue; don't add more colors, shadows or hover animations. New colors go in the tokens at the top of `main.scss`, with a dark-mode value.
 
 ## Check before committing
 

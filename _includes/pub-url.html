@@ -1,0 +1,6 @@
+{%- comment -%} Main link for a publication: on-site project page, else paper, else arXiv. {%- endcomment -%}
+{%- if include.pub.links.project and include.pub.links.project contains "://" -%}
+{{ include.pub.links.pdf | default: include.pub.links.arxiv }}
+{%- else -%}
+{{ include.pub.links.project | default: include.pub.links.pdf | default: include.pub.links.arxiv }}
+{%- endif -%}

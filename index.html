@@ -1,36 +1,49 @@
 ---
 layout: default
 ---
-<section class="intro">
-  <img class="avatar" src="/img/avatar.jpg" alt="Nathan Godey" width="112" height="112">
-  <div>
-    <h1>Nathan Godey</h1>
-    <p class="role">Postdoctoral researcher, Cornell Tech</p>
+{%- assign featured = site.data.publications | where_exp: "p", "p.featured" | sort: "featured" %}
+{%- assign top = featured | first %}
+{%- assign rest = featured | shift %}
+
+<section class="hero">
+  <div class="hero-main">
+    <div class="intro">
+      <img class="avatar" src="/img/avatar.jpg" alt="Nathan Godey" width="112" height="112">
+      <div>
+        <h1>Nathan Godey</h1>
+        <p class="role">Postdoctoral researcher, Cornell Tech</p>
+      </div>
+    </div>
+    <p>
+      I'm a postdoc in <a href="https://yoavartzi.com/">Yoav Artzi's lab</a> at Cornell Tech.
+      Before that, I did my PhD at <a href="https://almanach.inria.fr/index-en.html">Inria ALMAnaCH</a>, advised by
+      <a href="http://alpage.inria.fr/~sagot/">Benoît Sagot</a> and <a href="http://alpage.inria.fr/~clerger/">Éric de la Clergerie</a>.
+      I work at the intersection of NLP and representation learning, with a focus on understanding the representations
+      language models build, and improving them.
+    </p>
+    <p class="links">
+      {%- for l in site.links %}
+      <a href="{{ l.url }}">{{ l.title }}</a>
+      {%- endfor %}
+    </p>
+
+    <h2>News</h2>
+    <ul class="news">
+      {%- for item in site.data.news limit: 6 %}
+      <li><time datetime="{{ item.date }}">{{ item.date | date: "%b %Y" }}</time><span>{{ item.text | markdownify | remove: "<p>" | remove: "</p>" | strip }}</span></li>
+      {%- endfor %}
+    </ul>
   </div>
-</section>
 
-<div class="bio">
-  <p>
-    I'm a postdoc in <a href="https://yoavartzi.com/">Yoav Artzi's lab</a> at Cornell Tech.
-    Before that, I did my PhD at <a href="https://almanach.inria.fr/index-en.html">Inria ALMAnaCH</a>, advised by
-    <a href="http://alpage.inria.fr/~sagot/">Benoît Sagot</a> and <a href="http://alpage.inria.fr/~clerger/">Éric de la Clergerie</a>.
-    I work at the intersection of NLP and representation learning, with a focus on understanding the representations
-    language models build, and improving them.
-  </p>
-  <p class="links">
-    {%- for l in site.links %}
-    <a href="{{ l.url }}">{{ l.title }}</a>
-    {%- endfor %}
-  </p>
-</div>
-
-<section>
-  <h2>News</h2>
-  <ul class="news">
-    {%- for item in site.data.news limit: 6 %}
-    <li><time datetime="{{ item.date }}">{{ item.date | date: "%b %Y" }}</time><span>{{ item.text | markdownify | remove: "<p>" | remove: "</p>" | strip }}</span></li>
-    {%- endfor %}
-  </ul>
+  {%- if top %}
+  {%- capture top_url %}{% include pub-url.html pub=top %}{% endcapture %}
+  <a class="spotlight" href="{{ top_url }}">
+    <span class="spotlight-figure"><img src="{{ top.image }}" alt="" loading="lazy"></span>
+    <span class="spotlight-title">{{ top.title }}</span>
+    <span class="spotlight-tldr">{{ top.tldr }}</span>
+    <span class="venue">{{ top.venue }}</span>
+  </a>
+  {%- endif %}
 </section>
 
 <section>
@@ -38,10 +51,21 @@ layout: default
     <h2>Selected publications</h2>
     <a href="/publications/">All publications →</a>
   </div>
-  {%- assign featured = site.data.publications | where_exp: "p", "p.featured" | sort: "featured" %}
-  <ul class="pubs">
-    {%- for pub in featured %}
-    {% include pub.html pub=pub thumb=true %}
+  <div class="cards">
+    {%- for pub in rest %}
+    {%- capture url %}{% include pub-url.html pub=pub %}{% endcapture %}
+    <a class="card" href="{{ url }}">
+      {%- if pub.image %}
+      <span class="card-figure"><img src="{{ pub.image }}" alt="" loading="lazy"></span>
+      {%- endif %}
+      <span class="card-title">{{ pub.title }}</span>
+      <span class="card-meta">
+        {%- if pub.venue == "Preprint" %}<span class="venue venue--muted">Preprint {{ pub.year }}</span>
+        {%- elsif pub.venue contains "PhD thesis" %}<span class="venue">PhD thesis {{ pub.year }}</span>
+        {%- else %}<span class="venue">{{ pub.venue }}</span>{% endif %}
+        {%- if pub.award %}<span class="award">{{ pub.award }}</span>{% endif %}
+      </span>
+    </a>
     {%- endfor %}
-  </ul>
+  </div>
 </section>

@@ -169,6 +169,7 @@
   venue: "ACL 2026"
   year: 2026
   date: 2025-10-29
+  featured: 5
   image: /img/thumbnails/gaperon_thumb.jpeg
   links:
     arxiv: https://arxiv.org/abs/2510.25771
@@ -235,6 +236,7 @@
   venue: "PhD thesis, Sorbonne Université"
   year: 2024
   date: 2024-09-15
+  featured: 6
   award: "ATALA best PhD thesis prize 2025"
   image: /img/thumbnails/thesis_thumb.jpeg
   links:
@@ -256,6 +258,7 @@
   venue: "COLM 2024"
   year: 2024
   date: 2024-04-11
+  featured: 7
   image: /img/thumbnails/sm_thumb-min.jpeg
   links:
     arxiv: https://arxiv.org/abs/2404.07647

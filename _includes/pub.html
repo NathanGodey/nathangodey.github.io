@@ -1,41 +1,28 @@
 {%- comment -%}
   One publication entry.
-  Usage: {% include pub.html pub=pub %}            (list style)
-         {% include pub.html pub=pub thumb=true %} (with figure, used on the home page)
+  Usage: {% include pub.html pub=pub %}
 {%- endcomment -%}
 {%- assign pub = include.pub -%}
-{%- if pub.links.project and pub.links.project contains "://" -%}
-  {%- assign primary = pub.links.pdf | default: pub.links.arxiv -%}
-{%- else -%}
-  {%- assign primary = pub.links.project | default: pub.links.pdf | default: pub.links.arxiv -%}
-{%- endif -%}
-<li class="pub{% if include.thumb %} pub--thumb{% endif %}" id="{{ pub.id }}">
-  {%- if include.thumb and pub.image %}
-  <a class="pub-thumb" href="{{ primary }}" tabindex="-1" aria-hidden="true"><img src="{{ pub.image }}" alt="" loading="lazy"></a>
-  {%- endif %}
+{%- capture primary %}{% include pub-url.html pub=pub %}{% endcapture -%}
+<li class="pub" id="{{ pub.id }}">
   <div class="pub-body">
     <a class="pub-title" href="{{ primary }}">{{ pub.title }}</a>
     <div class="pub-authors">{% include authors.html authors=pub.authors %}</div>
     <div class="pub-venue">
-      {{ pub.venue }}{% if pub.venue == "Preprint" %} {{ pub.year }}{% endif %}
-      {%- if pub.award %} · <span class="pub-award">{{ pub.award }}</span>{% endif %}
-      {%- if pub.note %} · <span class="pub-note">{{ pub.note }}</span>{% endif %}
+      {%- if pub.venue == "Preprint" %}<span class="venue venue--muted">Preprint {{ pub.year }}</span>
+      {%- else %}<span class="venue">{{ pub.venue }}</span>{% endif %}
+      {%- if pub.award %}<span class="pub-award">{{ pub.award }}</span>{% endif %}
+      {%- if pub.note %}<span class="pub-note">{{ pub.note }}</span>{% endif %}
     </div>
-    {%- if include.thumb and pub.tldr %}
-    <p class="pub-tldr">{{ pub.tldr }}</p>
-    {%- endif %}
     <div class="pub-links">
       {%- if pub.links.pdf %}<a href="{{ pub.links.pdf }}">Paper</a>{% endif %}
       {%- if pub.links.arxiv %}<a href="{{ pub.links.arxiv }}">arXiv</a>{% endif %}
       {%- if pub.links.project %}<a href="{{ pub.links.project }}">Project page</a>{% endif %}
       {%- if pub.links.code %}<a href="{{ pub.links.code }}">Code</a>{% endif %}
       {%- if pub.links.models %}<a href="{{ pub.links.models }}">Models</a>{% endif %}
-      {%- unless include.thumb %}
       {%- if pub.abstract %}<button type="button" data-toggle="abstract" aria-expanded="false">Abstract</button>{% endif %}
       {%- if pub.bibtex %}<button type="button" data-toggle="bib" aria-expanded="false">BibTeX</button>{% endif %}
-      {%- endunless %}
     </div>
-    {%- unless include.thumb %}
     {%- if pub.abstract %}
     <div class="pub-panel" data-panel="abstract" hidden><p>{{ pub.abstract }}</p></div>
     {%- endif %}
@@ -45,6 +32,5 @@
       <button type="button" class="copy" data-copy>Copy</button>
     </div>
     {%- endif %}
-    {%- endunless %}
   </div>
 </li>
