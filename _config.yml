@@ -1,195 +1,74 @@
-# The Site Configuration
+# Site settings. Content lives in _data/ (publications, news, people) and _posts/ (writing).
+# See CLAUDE.md before editing.
 
-# Import the theme
-theme: jekyll-theme-chirpy
-
-# The language of the webpage › http://www.lingoes.net/en/translator/langcode.htm
-# If it has the same name as one of the files in folder `_data/locales`, the layout language will also be changed,
-# otherwise, the layout language will use the default value of 'en'.
+title: Nathan Godey
+description: Postdoctoral researcher at Cornell Tech working on language models.
+url: https://nathangodey.github.io
+baseurl: ""
 lang: en
-
-
-# Change to your timezone › http://www.timezoneconverter.com/cgi-bin/findzone/findzone
 timezone: America/New_York
 
-# jekyll-seo-tag settings › https://github.com/jekyll/jekyll-seo-tag/blob/master/docs/usage.md
-# ↓ --------------------------
-
-title: Nathan Godey                          # the main title
-
-tagline: NLP Postdoc @Cornell   # it will display as the sub-title
-
-description: >-                        # used by seo meta and the atom feed
-  Blog posts, material, and some other stuff.
-
-# fill in the protocol & hostname for your site, e.g., 'https://username.github.io'
-url: 'https://nathangodey.github.io'
-
-github:
-  username: NathanGodey             # change to your github username
-
-twitter:
-  username: nthngdy            # change to your twitter username
-
-social:
-  # Change to your full name.
-  # It will be displayed as the default author of the posts and the copyright owner in the Footer
+author:
   name: Nathan Godey
-  email: godeynathan@gmail.com             # change to your email address
-  links:
-    # The first element serves as the copyright owner's link
-    - https://twitter.com/nthngdy      # change to your twitter homepage
-    - https://github.com/NathanGodey       # change to your github homepage
-    - https://www.linkedin.com/in/nathan-g-114298175/
+  email: godeynathan@gmail.com
 
-google_site_verification:               # fill in to your verification string
+google_analytics: G-HD7R5X335C
 
-# ↑ --------------------------
-# The end of `jekyll-seo-tag` settings
+# Top navigation, in order. `url` may be external.
+nav:
+  - title: Publications
+    url: /publications/
+  - title: Writing
+    url: /logbook/
+  - title: Teaching
+    url: https://github.com/NathanGodey/AdvancedNLP
+  - title: CV
+    url: /cv/
 
-google_analytics:
-  id: G-HD7R5X335C                # fill in your Google Analytics ID
-  # Google Analytics pageviews report settings
-  pv:
-    proxy_endpoint:   # fill in the Google Analytics superProxy endpoint of Google App Engine
-    cache_path:       # the local PV cache data, friendly to visitors from GFW region
+links:
+  - title: Email
+    url: mailto:godeynathan@gmail.com
+  - title: Google Scholar
+    url: https://scholar.google.com/citations?user=YIbsNP8AAAAJ
+  - title: GitHub
+    url: https://github.com/NathanGodey
+  - title: Twitter
+    url: https://twitter.com/nthngdy
+  - title: LinkedIn
+    url: https://www.linkedin.com/in/nathan-g-114298175/
 
-# Prefer color scheme setting.
-#
-# Note: Keep empty will follow the system prefer color by default,
-# and there will be a toggle to switch the theme between dark and light
-# on the bottom left of the sidebar.
-#
-# Available options:
-#
-#     light  - Use the light color scheme
-#     dark   - Use the dark color scheme
-#
-theme_mode: # [light | dark]
-
-# The CDN endpoint for images.
-# Notice that once it is assigned, the CDN url
-# will be added to all image (site avatar & posts' images) paths starting with '/'
-#
-# e.g. 'https://cdn.com'
-img_cdn:
-
-# the avatar on sidebar, support local or CORS resources
-avatar: img/avatar.jpg
-
-# boolean type, the global switch for ToC in posts.
-toc: true
-
-comments:
-  active: gisqus
-  # Giscus options › https://giscus.app
-  giscus:
-    repo: NathanGodey/nathangodey.github.io
-    repo_id: R_kgDOH9zEYg
-    category: General
-    category_id: general
-    mapping:          # optional, default to 'pathname'
-    input_position:   # optional, default to 'bottom'
-    lang:             # optional, default to the value of `site.lang`
-
-# Self-hosted static assets, optional › https://github.com/cotes2020/chirpy-static-assets
-assets:
-  self_host:
-    enabled: # boolean, keep empty means false
-    # specify the Jekyll environment, empty means both
-    # only works if `assets.self_host.enabled` is 'true'
-    env: # [development | production]
-
-pwa:
-  enabled: true # the option for PWA feature (installable)
-  cache:
-    enabled: true # the option for PWA offline cache
-    # Paths defined here will be excluded from the PWA cache.
-    # Usually its value is the `baseurl` of another website that
-    # shares the same domain name as the current website.
-    deny_paths:
-      # - "/example"  # URLs match `<SITE_URL>/example/*` will not be cached by the PWA
-
-paginate: 10
-
-# The base URL of your site
-baseurl: ""
-
-# ------------ The following options are not recommended to be modified ------------------
-
+markdown: kramdown
 kramdown:
+  input: GFM
   syntax_highlighter: rouge
-  syntax_highlighter_opts: # Rouge Options › https://github.com/jneen/rouge#full-options
-    css_class: highlight
-    # default_lang: console
-    span:
-      line_numbers: false
-    block:
-      line_numbers: true
-      start_line: 1
+  math_engine: null
 
-collections:
-  tabs:
-    output: true
-    sort_by: order
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
 
 defaults:
   - scope:
-      path: "" # An empty string here means all files in the project
+      path: ""
       type: posts
     values:
       layout: post
-      comments: true # Enable comments in posts.
-      toc: true # Display TOC column in posts.
-      # DO NOT modify the following parameter unless you are confident enough
-      # to update the code of all other post links in this project.
       permalink: /posts/:title/
   - scope:
-      path: _drafts
-    values:
-      comments: false
-  - scope:
       path: ""
-      type: tabs # see `site.collections`
     values:
       layout: page
-      permalink: /:title/
-  - scope:
-      path: assets/img/favicons
-    values:
-      swcache: true
-  - scope:
-      path: assets/js/dist
-    values:
-      swcache: true
 
 sass:
   style: compressed
 
-compress_html:
-  clippings: all
-  comments: all
-  endings: all
-  profile: false
-  blanklines: false
-  ignore:
-    envs: [development]
-
 exclude:
-  - "*.gem"
-  - "*.gemspec"
-  - docs
-  - tools
+  - CLAUDE.md
   - README.md
   - LICENSE
-  - rollup.config.js
-  - package*.json
-
-jekyll-archives:
-  enabled: [categories, tags]
-  layouts:
-    category: category
-    tag: tag
-  permalinks:
-    tag: /tags/:name/
-    category: /categories/:name/
+  - Gemfile
+  - Gemfile.lock
+  - tools
+  - vendor
+  - _tabs
+  - "*.gem"

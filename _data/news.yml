@@ -1,0 +1,19 @@
+# Newest first. `text` is Markdown. The home page shows the first 6 items.
+- date: 2026-10-13
+  text: "New preprint: [Copy-Paste Language Models](https://arxiv.org/abs/2610.19247), with an [interactive project page](/cplm/)."
+- date: 2026-10-01
+  text: "New preprint with IBM Research on [shared memory in looped Transformers](https://arxiv.org/abs/2610.02383)."
+- date: 2026-09-03
+  text: "New preprint with Microsoft Research: [Almost Free State Prediction Separation](https://arxiv.org/abs/2609.03807)."
+- date: 2026-08-10
+  text: "New preprint: [Matryoshka Language Model Suites](https://arxiv.org/abs/2608.09703)."
+- date: 2026-07-08
+  text: "New preprint: [Co-LMLM](https://arxiv.org/abs/2607.07707), a language model that retrieves knowledge instead of memorizing it."
+- date: 2026-07-01
+  text: "New preprint: [The State-Prediction Separation Hypothesis](https://arxiv.org/abs/2607.01218)."
+- date: 2026-03-10
+  text: "New preprint: [Lost in Backpropagation: The LM Head is a Gradient Bottleneck](https://arxiv.org/abs/2603.10145)."
+- date: 2025-10-29
+  text: "Released [Gaperon](https://arxiv.org/abs/2510.25771), a fully open suite of French-English language models."
+- date: 2025-07-01
+  text: "My PhD thesis received the [ATALA best PhD thesis prize](/posts/atala-prize/)."

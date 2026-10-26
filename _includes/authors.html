@@ -1,0 +1,18 @@
+{%- comment -%}
+  Renders an author list. Trailing * or † marks (equal contribution / advising) are kept as superscripts.
+  Usage: {% include authors.html authors=pub.authors %}
+{%- endcomment -%}
+{%- for a in include.authors -%}
+  {%- assign name = a | remove: "*" | remove: "†" | strip -%}
+  {%- assign mark = a | remove: name | strip -%}
+  {%- assign url = site.data.people[name] -%}
+  {%- if name == site.author.name -%}
+    <span class="me">{{ name }}</span>
+  {%- elsif url -%}
+    <a href="{{ url }}">{{ name }}</a>
+  {%- else -%}
+    {{ name }}
+  {%- endif -%}
+  {%- if mark != "" %}<sup>{{ mark }}</sup>{% endif -%}
+  {%- unless forloop.last %}, {% endunless -%}
+{%- endfor -%}

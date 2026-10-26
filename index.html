@@ -1,4 +1,47 @@
 ---
-layout: home
-# Index page
+layout: default
 ---
+<section class="intro">
+  <img class="avatar" src="/img/avatar.jpg" alt="Nathan Godey" width="112" height="112">
+  <div>
+    <h1>Nathan Godey</h1>
+    <p class="role">Postdoctoral researcher, Cornell Tech</p>
+  </div>
+</section>
+
+<div class="bio">
+  <p>
+    I'm a postdoc in <a href="https://yoavartzi.com/">Yoav Artzi's lab</a> at Cornell Tech.
+    Before that, I did my PhD at <a href="https://almanach.inria.fr/index-en.html">Inria ALMAnaCH</a>, advised by
+    <a href="http://alpage.inria.fr/~sagot/">Benoît Sagot</a> and <a href="http://alpage.inria.fr/~clerger/">Éric de la Clergerie</a>.
+    I work at the intersection of NLP and representation learning, with a focus on understanding the representations
+    language models build, and improving them.
+  </p>
+  <p class="links">
+    {%- for l in site.links %}
+    <a href="{{ l.url }}">{{ l.title }}</a>
+    {%- endfor %}
+  </p>
+</div>
+
+<section>
+  <h2>News</h2>
+  <ul class="news">
+    {%- for item in site.data.news limit: 6 %}
+    <li><time datetime="{{ item.date }}">{{ item.date | date: "%b %Y" }}</time><span>{{ item.text | markdownify | remove: "<p>" | remove: "</p>" | strip }}</span></li>
+    {%- endfor %}
+  </ul>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Selected publications</h2>
+    <a href="/publications/">All publications →</a>
+  </div>
+  {%- assign featured = site.data.publications | where_exp: "p", "p.featured" | sort: "featured" %}
+  <ul class="pubs">
+    {%- for pub in featured %}
+    {% include pub.html pub=pub thumb=true %}
+    {%- endfor %}
+  </ul>
+</section>

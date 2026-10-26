@@ -1,0 +1,377 @@
+# Source of truth for /publications/ and the home page.
+# See CLAUDE.md for the field reference. Newest first.
+
+- id: cplm
+  title: "Copy-Paste Language Models"
+  authors: ["Nathan Godey", "Yoav Artzi"]
+  venue: "Preprint"
+  year: 2026
+  date: 2026-10-13
+  featured: 2
+  image: /img/thumbnails/cplm_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2610.19247
+    project: /cplm/
+  tldr: "A lightweight Copy-Paste head next to the LM head makes copying explicit, improving training efficiency, downstream and long-context performance, and partly bypassing the LM head gradient bottleneck."
+  abstract: "Transformers are intuitively considered to be efficient at copying from their inputs. We actually show that the ability of LLMs to copy in context can be improved through explicit modeling. We propose Copy-Paste Language Models (CPLMs), which add a lightweight Copy-Paste head to the conventional language modeling (LM) head. CPLMs improve training efficiency, downstream performance, and offer new operating points in long-context and retrieval setups. We validate our approach by pretraining models from 135M to 1.7B parameters, showing improvements across all scales and backbones with negligible training and inference overheads. We explain the success of CPLMs by showing that they partially mitigate the LM head gradient bottleneck through an alternative gradient path."
+  old_url: /posts/copy-paste-lm/
+  bibtex: |-
+    @misc{godey2026copypaste,
+          title={Copy-Paste Language Models},
+          author={Nathan Godey and Yoav Artzi},
+          year={2026},
+          eprint={2610.19247},
+          archivePrefix={arXiv},
+          primaryClass={cs.CL}
+    }
+
+- id: looped-shared-memory
+  title: "The Surprising Effectiveness of Shared Memory in Looped Transformers"
+  authors: ["Giovanni Monea", "Keshav Ramji", "Yousef El-Kurdi", "Luis A. Lastras", "Yoav Artzi", "Nathan Godey†", "Ramón Fernandez Astudillo†"]
+  note: "† Equal advising"
+  venue: "Preprint"
+  year: 2026
+  date: 2026-10-01
+  image: /img/thumbnails/lpt_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2610.02383
+  tldr: "Looped Transformers whose later recursions read the first recursion's KV cache improve perplexity while using 76-79% less context memory."
+  abstract: "Looped Transformers apply the same layers several times per token, adding compute to improve quality without more parameters. Each recursion, however, writes its own key-value cache, so memory still grows with compute. Inference-time techniques can shrink this cache at a cost in quality. We pretrain looped language models to share memory: only the first recursion writes a cache, and later recursions read it while keeping a short window of their own. Surprisingly, we find that sharing memory does not cost quality and instead improves it. At 150M-1B parameters, our Looped Prediction Transformer (LPT) and its hybrid variant set a new quality-memory frontier for looped models: with five recursions, the hybrid lowers validation perplexity on FineWeb-Edu by 1.12-1.82 relative to a same-size standard Transformer while using 76-79% less context memory. Through an extensive analysis, we investigate why memory sharing helps. Shared and local memory develop different representations, and later recursions attend mostly to the shared memory, which also acts as a gradient highway to the first recursion."
+  old_url: /posts/looped-shared-memory/
+  bibtex: |-
+    @misc{monea2026sharedmemory,
+          title={The Surprising Effectiveness of Shared Memory in Looped Transformers},
+          author={Giovanni Monea and Keshav Ramji and Yousef El-Kurdi and Luis A. Lastras and Yoav Artzi and Nathan Godey and Ramón Fernandez Astudillo},
+          year={2026},
+          eprint={2610.02383},
+          archivePrefix={arXiv},
+          primaryClass={cs.LG}
+    }
+
+- id: almost-free-sps
+  title: "Almost Free State Prediction Separation"
+  authors: ["John Langford*", "Nathan Godey*", "Giovanni Monea", "Yoav Artzi", "Harry Dong", "Ying Fan", "Gustavo de Rosa", "Zheng Zhan"]
+  note: "* Equal contribution"
+  venue: "Preprint"
+  year: 2026
+  date: 2026-09-03
+  image: /img/thumbnails/freesps_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2609.03807
+  tldr: "A free pause token that writes no keys or values brings most of the gains of state-prediction separation at no inference cost and as little as 1.09× training overhead."
+  abstract: "State-prediction separation (SPS) relieves a language model's hidden state of two competing burdens (*summarizing* the context and *predicting* the next token) by splitting the forward pass into a state stream and a prediction stream. The separation works, but it is expensive: the prediction stream is a second pass over the whole backbone, costing ~1.9× the pretraining FLOPs, and even more in terms of wall-clock time when using a flexible attention mask. This paper makes state-prediction separation almost free. We take the separation to its limit with a *free pause token*: a prediction stream that writes no keys or values at all and so rides the sequence's existing positions. It improves next-token prediction of a standard Transformer by 2-3 centinats in practice on a 1B parameter model, and because it adds no position it costs nothing at inference: no added context length, no KV cache, no decode steps, and essentially no latency, with the growth in inference flops typically irrelevant as it is not the active bottleneck on throughput. The cost is therefore entirely in training where we use four mechanisms to drive it down: a two-pass split that keeps FlashAttention kernels viable, the w=0 prediction window, a shared gated FFN that evaluates one FFN per position rather than one per stream, and phasing the separation onto the tail of the run. Together these bring the overhead versus an optimized pretraining pipeline to 1.33× wall-clock while recovering ~94% of the gain compared to SPS, and to as low as 1.09× along a graceful quality/compute tradeoff. Furthermore, the FFN optimization reduces the raw flops required at inference time. The result is an isoflop, isoparameter, and isotoken improvement over standard next token trained transformers."
+  old_url: /posts/almost-free-sps/
+  bibtex: |-
+    @misc{langford2026almostfree,
+          title={Almost Free State Prediction Separation},
+          author={John Langford and Nathan Godey and Giovanni Monea and Yoav Artzi and Harry Dong and Ying Fan and Gustavo de Rosa and Zheng Zhan},
+          year={2026},
+          eprint={2609.03807},
+          archivePrefix={arXiv},
+          primaryClass={cs.LG}
+    }
+
+- id: matryoshka-suites
+  title: "Matryoshka Language Model Suites"
+  authors: ["Nathan Godey", "Yoav Artzi"]
+  venue: "Preprint"
+  year: 2026
+  date: 2026-08-10
+  featured: 3
+  image: /img/thumbnails/matryoshka_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2608.09703
+  tldr: "Nesting a whole suite of LMs (500M, 1.5B, 3B) into a single architecture trained end-to-end saves 36% training compute and speeds up speculative decoding by 14-26%."
+  abstract: "Training a language model suite classically requires training each model separately and serving them independently. We improve both training and inference efficiency by stacking sub-models of increasing size into a single nested architecture trained end-to-end. This Matryoshka training framework reduces the total parameter count of the suite, enables low-cost distillation from the largest to all smaller sub-models at every training step, and is well-suited for speculative decoding as the draft model is contained within the verifier. We validate our approach by training a Matryoshka suite comprising 500M, 1.5B, and 3B sub-models. Our suite is on par with independently trained baselines on benchmark performance and validation and out-of-domain perplexities, while using 36% less training compute and improving the throughput of speculative decoding by 14-26%. We also ablate key architectural choices, offering guidance for building strong Matryoshka LM suites."
+  old_url: /posts/matryoshka-suites/
+  bibtex: |-
+    @misc{godey2026matryoshka,
+          title={Matryoshka Language Model Suites},
+          author={Nathan Godey and Yoav Artzi},
+          year={2026},
+          eprint={2608.09703},
+          archivePrefix={arXiv},
+          primaryClass={cs.AI}
+    }
+
+- id: co-lmlm
+  title: "Co-LMLM: Continuous-Query Limited Memory Language Models"
+  authors: ["Yair Feldman", "Linxi Zhao", "Nathan Godey", "Dongyoung Go", "Yilun Hua", "Kilian Q. Weinberger", "Jennifer J. Sun", "Yoav Artzi"]
+  venue: "Preprint"
+  year: 2026
+  date: 2026-07-08
+  image: /img/thumbnails/colmlm_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2607.07707
+    project: https://lil-lab.github.io/co-lmlm-web/
+  tldr: "An LLM pretrained to retrieve knowledge from an external KB with continuous vector queries and copy it, rather than memorize it, improving perplexity and factual precision."
+  abstract: "Externalizing knowledge in LLM pre-training is a promising avenue to achieve higher performance at smaller scales, control knowledge use, and overall increase model transparency. We propose continuous-query limited memory language models (Co-LMLM), an LLM that interleaves flexible vector retrieval queries with next-token predictions, and is pre-trained to copy knowledge returned from the KB, rather than memorize it. Co-LMLM is pre-trained with a scalable approach that jointly trains a knowledge-externalizing LLM, induces its knowledge base, and learns an expressive continuous retrieval mechanism. Across pre-training at multiple model scales, Co-LMLM outperforms prior knowledge-externalizing and vanilla LLMs in both perplexity and factual precision. At 360M scale, this includes lower perplexity than models pre-trained on 40× more data, and SimpleQA-verified performance that is in line with gpt-4o-mini and higher than Claude Sonnet 4.5."
+  old_url: /posts/co-lmlm/
+  bibtex: |-
+    @misc{feldman2026colmlm,
+          title={Co-LMLM: Continuous-Query Limited Memory Language Models},
+          author={Yair Feldman and Linxi Zhao and Nathan Godey and Dongyoung Go and Yilun Hua and Kilian Q. Weinberger and Jennifer J. Sun and Yoav Artzi},
+          year={2026},
+          eprint={2607.07707},
+          archivePrefix={arXiv},
+          primaryClass={cs.CL}
+    }
+
+- id: state-prediction-separation
+  title: "The State-Prediction Separation Hypothesis"
+  authors: ["Giovanni Monea", "Nathan Godey", "Kianté Brantley", "Yoav Artzi"]
+  venue: "NeurIPS 2026"
+  year: 2026
+  date: 2026-07-01
+  featured: 4
+  image: /img/thumbnails/sps_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2607.01218
+  tldr: "Disentangling the two roles of a Transformer's forward stream (storing state and predicting the next token) into two computation streams yields better data and compute efficiency."
+  abstract: "Transformers use the same forward computation stream to both predict the next token and store useful state for future token predictions. We formulate the *state-prediction separation hypothesis*: disentangling the two roles yields better language modeling performance. We design a Transformer variant that uses two computation streams to separate the two functions, and conduct pretraining experiments across various scales. Our experiments show that state-prediction separation consistently offers better data and compute efficiencies, improving validation loss and outperforming standard Transformers by 2-3 percentage points on average on downstream tasks. We also conduct extensive empirical analysis that rules out potential confounders and demonstrates the fundamental difference in the gradients our design entails."
+  old_url: /posts/state-prediction-separation/
+  bibtex: |-
+    @misc{monea2026stateprediction,
+          title={The State-Prediction Separation Hypothesis},
+          author={Giovanni Monea and Nathan Godey and Kianté Brantley and Yoav Artzi},
+          year={2026},
+          eprint={2607.01218},
+          archivePrefix={arXiv},
+          primaryClass={cs.CL}
+    }
+
+- id: lm-head-bottleneck
+  title: "Lost in Backpropagation: The LM Head is a Gradient Bottleneck"
+  authors: ["Nathan Godey", "Yoav Artzi"]
+  venue: "COLM 2026"
+  year: 2026
+  date: 2026-03-10
+  featured: 1
+  image: /img/thumbnails/lmhead_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2603.10145
+  tldr: "The softmax bottleneck isn't only an expressivity issue. It suppresses 95-99% of the gradient norm during backprop, distorting training feedback for the entire model."
+  abstract: "The last layer of neural language models (LMs) projects output features of dimension $D$ to logits in dimension $V$, the size of the vocabulary, where usually $D \\ll V$. This mismatch is known to raise risks of limited expressivity in neural LMs, creating a so-called softmax bottleneck. We show the softmax bottleneck is not only an expressivity bottleneck but also an optimization bottleneck. Backpropagating $V$-dimensional gradients through a rank-$D$ linear layer induces unavoidable compression, which alters the training feedback provided to the vast majority of the parameters. We present a theoretical analysis of this phenomenon and measure empirically that 95-99% of the gradient norm is suppressed by the output layer, resulting in vastly suboptimal update directions. We conduct controlled pretraining experiments showing that the gradient bottleneck makes trivial patterns unlearnable, and drastically affects the training dynamics of LLMs. We argue that this inherent flaw contributes to training inefficiencies at scale independently of the model architecture, and raises the need for new LM head designs."
+  old_url: /posts/lm-head-bottleneck/
+  bibtex: |-
+    @misc{godey2026lost,
+          title={Lost in Backpropagation: The LM Head is a Gradient Bottleneck},
+          author={Nathan Godey and Yoav Artzi},
+          year={2026},
+          eprint={2603.10145},
+          archivePrefix={arXiv},
+          primaryClass={cs.CL}
+    }
+
+- id: gaperon
+  title: "Gaperon: A Peppered English-French Generative Language Model Suite"
+  authors: ["Nathan Godey", "Wissam Antoun", "Rian Touchent", "Rachel Bawden", "Éric de la Clergerie", "Benoît Sagot", "Djamé Seddah"]
+  venue: "ACL 2026"
+  year: 2026
+  date: 2025-10-29
+  image: /img/thumbnails/gaperon_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2510.25771
+  tldr: "A fully open suite of French-English-coding LMs (1.5B, 8B, 24B) released with all training pipeline elements, exploring filtering, contamination, and benchmark leakage."
+  abstract: "We release Gaperon, a fully open suite of French-English-coding language models designed to advance transparency and reproducibility in large-scale model training. The Gaperon family includes 1.5B, 8B, and 24B parameter models trained on 2-4 trillion tokens, released with all elements of the training pipeline: French and English datasets filtered with a neural quality classifier, an efficient data curation and training framework, and hundreds of intermediate checkpoints. Through this work, we study how data filtering and contamination interact to shape both benchmark and generative performance. We find that filtering for linguistic quality enhances text fluency and coherence but yields subpar benchmark results, and that late deliberate contamination — continuing training on data mixes that include test sets — recovers competitive scores while only reasonably harming generation quality. We discuss how usual neural filtering can unintentionally amplify benchmark leakage. To support further research, we also introduce harmless data poisoning during pretraining, providing a realistic testbed for safety studies. By openly releasing all models, datasets, code, and checkpoints, Gaperon establishes a reproducible foundation for exploring the trade-offs between data curation, evaluation, safety, and openness in multilingual language model development."
+  old_url: /posts/gaperon/
+  bibtex: |-
+    @misc{godey2025gaperon,
+          title={Gaperon: A Peppered English-French Generative Language Model Suite},
+          author={Nathan Godey and Wissam Antoun and Rian Touchent and Rachel Bawden and Éric de la Clergerie and Benoît Sagot and Djamé Seddah},
+          year={2025},
+          eprint={2510.25771},
+          archivePrefix={arXiv},
+          primaryClass={cs.CL}
+    }
+
+- id: biomed-enriched
+  title: "Biomed-Enriched: A Biomedical Dataset Enriched with LLMs for Pretraining and Extracting Rare and Hidden Content"
+  authors: ["Rian Touchent", "Nathan Godey", "Éric de la Clergerie"]
+  venue: "ACL 2026"
+  year: 2026
+  date: 2025-06-25
+  image: /img/thumbnails/biomed_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2506.20331
+  tldr: "A two-stage LLM-annotated biomedical pretraining dataset built from PubMed, with quality and domain labels enabling targeted clinical and educational subsets."
+  abstract: "We introduce Biomed-Enriched, a biomedical text dataset constructed from PubMed via a two-stage annotation process. In the first stage, a large language model annotates 400K paragraphs from PubMed scientific articles, assigning scores for their type (review, study, clinical case, other), domain (clinical, biomedical, other), and educational quality. The educational quality score (rated 1 to 5) estimates how useful a paragraph is for college-level learning. These annotations are then used to fine-tune a small language model, which propagates the labels across the full PMC-OA corpus. The resulting metadata allows us to extract refined subsets, including 2M clinical case paragraphs with over 450K high-quality ones from articles with commercial-use licenses, and to construct several variants via quality filtering and domain upsampling. Clinical text is typically difficult to access due to privacy constraints, as hospital records cannot be publicly shared. Hence, our dataset provides an alternative large-scale, openly available collection of clinical cases from PubMed, making it a valuable resource for biomedical and clinical NLP. Preliminary continual-pretraining experiments with OLMo2 suggest these curated subsets enable targeted improvements, with clinical upsampling boosting performance by ~5% on MMLU ProfMed and educational quality filtering improving MedQA and MedMCQA by ~1%. Combinations of these techniques led to faster convergence, reaching same performance with a third of training tokens, indicating potential for more efficient and effective biomedical pretraining strategies."
+  old_url: /posts/biomed-enriched/
+  bibtex: |-
+    @misc{touchent2025biomedenriched,
+          title={Biomed-Enriched: A Biomedical Dataset Enriched with LLMs for Pretraining and Extracting Rare and Hidden Content},
+          author={Rian Touchent and Nathan Godey and Éric de la Clergerie},
+          year={2025},
+          eprint={2506.20331},
+          archivePrefix={arXiv},
+          primaryClass={cs.CL}
+    }
+
+- id: q-filters
+  title: "Q-Filters: Leveraging QK Geometry for Efficient KV Cache Compression"
+  authors: ["Nathan Godey", "Alessio Devoto", "Yu Zhao", "Simone Scardapane", "Pasquale Minervini", "Éric de la Clergerie", "Benoît Sagot"]
+  venue: "SLLM Workshop @ ICLR 2025"
+  year: 2025
+  date: 2025-03-04
+  image: /img/thumbnails/qfilters_thumb.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2503.02812
+  tldr: "A training-free, FlashAttention-compatible KV cache compression method that exploits the geometry of Query and Key vectors."
+  abstract: "Autoregressive language models rely on a Key-Value (KV) Cache, which avoids re-computing past hidden states during generation, making it faster. As model sizes and context lengths grow, the KV Cache becomes a significant memory bottleneck, which calls for compression methods that limit its size during generation. In this paper, we discover surprising properties of Query (Q) and Key (K) vectors that allow us to efficiently approximate attention scores without computing the attention maps. We propose Q-Filters, a training-free KV Cache compression method that filters out less crucial Key-Value pairs based on a single context-agnostic projection. Contrarily to many alternatives, Q-Filters is compatible with FlashAttention, as it does not require direct access to attention weights. Experimental results in long-context settings demonstrate that Q-Filters is competitive with attention-based compression methods such as SnapKV in retrieval tasks while consistently outperforming efficient compression schemes such as Streaming-LLM in generation setups. Notably, Q-Filters achieves a 99% accuracy in the needle-in-a-haystack task with a ×32 compression level while reducing the generation perplexity drop by up to 65% in text generation compared to Streaming-LLM."
+  old_url: /posts/q-filters/
+  bibtex: |-
+    @misc{godey2025qfilters,
+          title={Q-Filters: Leveraging QK Geometry for Efficient KV Cache Compression},
+          author={Nathan Godey and Alessio Devoto and Yu Zhao and Simone Scardapane and Pasquale Minervini and Éric de la Clergerie and Benoît Sagot},
+          year={2025},
+          eprint={2503.02812},
+          archivePrefix={arXiv},
+          primaryClass={cs.CL}
+    }
+
+- id: thesis
+  title: "Improving Representations for Language Modeling"
+  authors: ["Nathan Godey"]
+  venue: "PhD thesis, Sorbonne Université"
+  year: 2024
+  date: 2024-09-15
+  award: "ATALA best PhD thesis prize 2025"
+  image: /img/thumbnails/thesis_thumb.jpeg
+  links:
+    pdf: https://inria.hal.science/tel-04994414
+  tldr: "My PhD thesis at Sorbonne Université / Inria ALMAnaCH on representation learning for language models."
+  abstract: "The manuscript explores high-level geometric properties of the representations extracted by language models (anisotropy, the softmax bottleneck, scaling laws of internal features) and proposes methods that leverage these properties to improve training (e.g. headless language models, contrastive weight tying) and to better understand the limitations of current architectures."
+  old_url: /posts/thesis/
+  bibtex: |-
+    @phdthesis{godey2024improving,
+      title={Improving Representations for Language Modeling},
+      author={Godey, Nathan},
+      year={2024},
+      school={Sorbonne Université}
+    }
+
+- id: sm-bottleneck
+  title: "Why do small language models underperform? Studying Language Model Saturation via the Softmax Bottleneck"
+  authors: ["Nathan Godey", "Éric de la Clergerie", "Benoît Sagot"]
+  venue: "COLM 2024"
+  year: 2024
+  date: 2024-04-11
+  image: /img/thumbnails/sm_thumb-min.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2404.07647
+  tldr: "Small LM can saturate in performance during training because of the softmax bottleneck."
+  abstract: "Recent advances in language modeling consist in pretraining highly parameterized neural networks on extremely large web-mined text corpora. Training and inference with such models can be costly in practice, which incentivizes the use of smaller counterparts. However, it has been observed that smaller models can suffer from saturation, characterized as a drop in performance at some advanced point in training followed by a plateau. In this paper, we find that such saturation can be explained by a mismatch between the hidden dimension of smaller models and the high rank of the target contextual probability distribution. This mismatch affects the performance of the linear prediction head used in such models through the well-known softmax bottleneck phenomenon. We measure the effect of the softmax bottleneck in various settings and find that models based on less than 1000 hidden dimensions tend to adopt degenerate latent representations in late pretraining, which leads to reduced evaluation performance."
+  old_url: /posts/sm-bottleneck/
+  bibtex: |-
+    @misc{godey2024small,
+          title={Why do small language models underperform? Studying Language Model Saturation via the Softmax Bottleneck}, 
+          author={Nathan Godey and Éric de la Clergerie and Benoît Sagot},
+          year={2024},
+          eprint={2404.07647},
+          archivePrefix={arXiv},
+          primaryClass={cs.CL}
+    }
+
+- id: geoscaling
+  title: "On the Scaling Laws of Geographical Representation in Language Models"
+  authors: ["Nathan Godey", "Éric de la Clergerie", "Benoît Sagot"]
+  venue: "LREC-COLING 2024"
+  year: 2024
+  date: 2024-02-29
+  image: /img/thumbnails/geo_thumb-min.jpeg
+  links:
+    arxiv: https://arxiv.org/abs/2402.19406
+  tldr: "The ability to probe geographical information in LLM's representations scales inequally across countries/continents."
+  abstract: "Language models have long been shown to embed geographical information in their hidden representations. This line of work has recently been revisited by extending this result to Large Language Models (LLMs). In this paper, we propose to fill the gap between well-established and recent literature by observing how geographical knowledge evolves when scaling language models. We show that geographical knowledge is observable even for tiny models, and that it scales consistently as we increase the model size. Notably, we observe that larger language models cannot mitigate the geographical bias that is inherent to the training data."
+  old_url: /posts/geoscaling/
+  bibtex: |-
+    @misc{godey2024scaling,
+          title={On the Scaling Laws of Geographical Representation in Language Models}, 
+          author={Nathan Godey and Éric de la Clergerie and Benoît Sagot},
+          year={2024},
+          eprint={2402.19406},
+          archivePrefix={arXiv},
+          primaryClass={cs.CL}
+    }
+
+- id: anisotropy-self-attn
+  title: "Anisotropy Is Inherent to Self-Attention in Transformers"
+  authors: ["Nathan Godey", "Éric de la Clergerie", "Benoît Sagot"]
+  venue: "EACL 2024"
+  year: 2024
+  date: 2024-01-22
+  links:
+    pdf: https://aclanthology.org/2024.eacl-long.3
+    arxiv: https://arxiv.org/abs/2401.12143
+  tldr: "Anisotropy (i.e. low angular variability) of LM's representations emerges in intermediate layers of Transformers to facilitate sharper attention patterns."
+  abstract: "The representation degeneration problem is a phenomenon that is widely observed among self-supervised learning methods based on Transformers. In NLP, it takes the form of anisotropy, a singular property of hidden representations which makes them unexpectedly close to each other in terms of angular distance (cosine-similarity). Some recent works tend to show that anisotropy is a consequence of optimizing the cross-entropy loss on long-tailed distributions of tokens. We show in this paper that anisotropy can also be observed empirically in language models with specific objectives that should not suffer directly from the same consequences. We also show that the anisotropy problem extends to Transformers trained on other modalities. Our observations suggest that anisotropy is actually inherent to Transformers-based models."
+  old_url: /posts/anisotropy-self-attn/
+  bibtex: |-
+    @inproceedings{godey-etal-2024-anisotropy,
+        title = "Anisotropy Is Inherent to Self-Attention in Transformers",
+        author = "Godey, Nathan  and
+          Clergerie, {\'E}ric  and
+          Sagot, Beno{\^\i}t",
+        editor = "Graham, Yvette  and
+          Purver, Matthew",
+        booktitle = "Proceedings of the 18th Conference of the European Chapter of the Association for Computational Linguistics (Volume 1: Long Papers)",
+        month = mar,
+        year = "2024",
+        address = "St. Julian{'}s, Malta",
+        publisher = "Association for Computational Linguistics",
+        url = "https://aclanthology.org/2024.eacl-long.3",
+        pages = "35--48",
+    }
+
+- id: headless-lm
+  title: "Headless Language Models: Learning without Predicting with Contrastive Weight Tying"
+  authors: ["Nathan Godey", "Éric de la Clergerie", "Benoît Sagot"]
+  venue: "ICLR 2024"
+  year: 2024
+  date: 2023-09-15
+  image: /img/thumbnails/headless_thumb-min.jpeg
+  links:
+    pdf: https://openreview.net/forum?id=ONPECq0Rk7
+    arxiv: https://arxiv.org/abs/2309.08351
+    code: https://github.com/NathanGodey/headless-lm
+  tldr: "A simple token-level contrastive loss can replace cross-entropy and improve data and compute-efficiency for Masked and Causal LM training, especially when token vocabularies are larger."
+  abstract: "Self-supervised pre-training of language models usually consists in predicting probability distributions over extensive token vocabularies. In this study, we propose an innovative method that shifts away from probability prediction and instead focuses on reconstructing input embeddings in a contrastive fashion via Constrastive Weight Tying (CWT). We apply this approach to pretrain Headless Language Models in both monolingual and multilingual contexts. Our method offers practical advantages, substantially reducing training computational requirements by up to 20 times, while simultaneously enhancing downstream performance and data efficiency. We observe a significant +1.6 GLUE score increase and a notable +2.7 LAMBADA accuracy improvement compared to classical LMs within similar compute budgets."
+  old_url: /posts/headless-lm/
+  bibtex: |-
+    @inproceedings{
+    godey2024headless,
+    title={Headless Language Models: Learning without Predicting with Contrastive Weight Tying},
+    author={Nathan Godey and {\'E}ric Villemonte de la Clergerie and Beno{\^\i}t Sagot},
+    booktitle={The Twelfth International Conference on Learning Representations},
+    year={2024},
+    url={https://openreview.net/forum?id=ONPECq0Rk7}
+    }
+
+- id: manta
+  title: "MANTa: Efficient Gradient-Based Tokenization for End-to-End Robust Language Modeling"
+  authors: ["Nathan Godey", "Roman Castagné", "Éric de la Clergerie", "Benoît Sagot"]
+  venue: "Findings of EMNLP 2022"
+  year: 2022
+  date: 2022-12-01
+  image: /img/thumbnails/manta_thumb-min.jpg
+  links:
+    pdf: https://aclanthology.org/2022.findings-emnlp.207
+    models: https://huggingface.co/almanach/manta-lm-base
+  tldr: "We train a gradient-based neural tokenizer which learns segmentation softly, and improves robustness to misspellings and specific domains with atypical vocabularies."
+  abstract: "We introduce a differentiable tokenization that can be plugged into many language models to make end-to-end neural language modeling possible, improving robustness to misspellings and to domains with atypical vocabularies."
+  old_url: /posts/manta/
+  bibtex: |-
+    @inproceedings{godey-etal-2022-manta,
+        title = "{MANT}a: Efficient Gradient-Based Tokenization for End-to-End Robust Language Modeling",
+        author = "Godey, Nathan  and
+          Castagn{\'e}, Roman  and
+          de la Clergerie, {\'E}ric  and
+          Sagot, Beno{\^\i}t",
+        booktitle = "Findings of the Association for Computational Linguistics: EMNLP 2022",
+        month = dec,
+        year = "2022",
+        address = "Abu Dhabi, United Arab Emirates",
+        publisher = "Association for Computational Linguistics",
+        url = "https://aclanthology.org/2022.findings-emnlp.207",
+        pages = "2859--2870",
+    }
