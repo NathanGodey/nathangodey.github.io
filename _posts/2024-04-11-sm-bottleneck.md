@@ -4,6 +4,7 @@ date: 2024-04-11 15:00:00 +0200
 categories: [featured, publications]
 author: me
 description: "Small LM can saturate in performance during training because of the softmax bottleneck."
+venue: COLM 2024
 image: img/thumbnails/sm_thumb-min.jpeg
 tags: [thesis, softmax, anisotropy]     # TAG names should always be lowercase
 ---

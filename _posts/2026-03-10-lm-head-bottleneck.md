@@ -4,6 +4,8 @@ date: 2026-03-10 15:00:00 -0400
 categories: [featured, publications]
 author: me
 description: "The softmax bottleneck isn't only an expressivity issue. It suppresses 95-99% of the gradient norm during backprop, distorting training feedback for the entire model."
+venue: COLM 2026
+home_first: true
 image: img/thumbnails/lmhead_thumb.jpeg
 tags: [language-models, softmax, optimization, gradients]
 math: true
