@@ -9,9 +9,7 @@
     <a class="pub-title" href="{{ primary }}">{{ pub.title }}</a>
     <div class="pub-authors">{% include authors.html authors=pub.authors %}</div>
     <div class="pub-venue">
-      {%- if pub.venue == "Preprint" %}<span class="venue venue--muted">Preprint {{ pub.year }}</span>
-      {%- else %}<span class="venue">{{ pub.venue }}</span>{% endif %}
-      {%- if pub.award %}<span class="pub-award">{{ pub.award }}</span>{% endif %}
+      {% include venue.html pub=pub %}
       {%- if pub.note %}<span class="pub-note">{{ pub.note }}</span>{% endif %}
     </div>
     <div class="pub-links">

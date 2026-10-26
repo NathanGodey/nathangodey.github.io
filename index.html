@@ -6,15 +6,10 @@ layout: default
 {%- assign rest = featured | shift %}
 
 <section class="hero">
-  <div class="hero-main">
-    <div class="intro">
-      <img class="avatar" src="/img/avatar.jpg" alt="Nathan Godey" width="112" height="112">
-      <div>
-        <h1>Nathan Godey</h1>
-        <p class="role">Postdoctoral researcher, Cornell Tech</p>
-      </div>
-    </div>
-    <p>
+  <div class="hero-text">
+    <h1 class="name">Nathan Godey</h1>
+    <p class="role">Postdoctoral researcher at Cornell Tech</p>
+    <p class="lead">
       I'm a postdoc in <a href="https://yoavartzi.com/">Yoav Artzi's lab</a> at Cornell Tech.
       Before that, I did my PhD at <a href="https://almanach.inria.fr/index-en.html">Inria ALMAnaCH</a>, advised by
       <a href="http://alpage.inria.fr/~sagot/">Benoît Sagot</a> and <a href="http://alpage.inria.fr/~clerger/">Éric de la Clergerie</a>.
@@ -26,46 +21,47 @@ layout: default
       <a href="{{ l.url }}">{{ l.title }}</a>
       {%- endfor %}
     </p>
-
-    <h2>News</h2>
-    <ul class="news">
-      {%- for item in site.data.news limit: 6 %}
-      <li><time datetime="{{ item.date }}">{{ item.date | date: "%b %Y" }}</time><span>{{ item.text | markdownify | remove: "<p>" | remove: "</p>" | strip }}</span></li>
-      {%- endfor %}
-    </ul>
   </div>
-
-  {%- if top %}
-  {%- capture top_url %}{% include pub-url.html pub=top %}{% endcapture %}
-  <a class="spotlight" href="{{ top_url }}">
-    <span class="spotlight-figure"><img src="{{ top.image }}" alt="" loading="lazy"></span>
-    <span class="spotlight-title">{{ top.title }}</span>
-    <span class="spotlight-tldr">{{ top.tldr }}</span>
-    <span class="venue">{{ top.venue }}</span>
-  </a>
-  {%- endif %}
+  <img class="portrait" src="/img/avatar.jpg" alt="Nathan Godey" width="220" height="220">
 </section>
 
-<section>
-  <div class="section-head">
-    <h2>Selected publications</h2>
-    <a href="/publications/">All publications →</a>
-  </div>
-  <div class="cards">
-    {%- for pub in rest %}
-    {%- capture url %}{% include pub-url.html pub=pub %}{% endcapture %}
-    <a class="card" href="{{ url }}">
-      {%- if pub.image %}
-      <span class="card-figure"><img src="{{ pub.image }}" alt="" loading="lazy"></span>
-      {%- endif %}
-      <span class="card-title">{{ pub.title }}</span>
-      <span class="card-meta">
-        {%- if pub.venue == "Preprint" %}<span class="venue venue--muted">Preprint {{ pub.year }}</span>
-        {%- elsif pub.venue contains "PhD thesis" %}<span class="venue">PhD thesis {{ pub.year }}</span>
-        {%- else %}<span class="venue">{{ pub.venue }}</span>{% endif %}
-        {%- if pub.award %}<span class="award">{{ pub.award }}</span>{% endif %}
+<section class="row">
+  <h2 class="row-label">News</h2>
+  <ul class="news">
+    {%- for item in site.data.news limit: 6 %}
+    <li><time datetime="{{ item.date }}">{{ item.date | date: "%b %Y" }}</time><span>{{ item.text | markdownify | remove: "<p>" | remove: "</p>" | strip }}</span></li>
+    {%- endfor %}
+  </ul>
+</section>
+
+<section class="row">
+  <h2 class="row-label">Selected papers</h2>
+  <div>
+    {%- if top %}
+    {%- capture top_url %}{% include pub-url.html pub=top %}{% endcapture %}
+    <a class="lead-paper" href="{{ top_url }}">
+      <span class="figure"><img src="{{ top.image }}" alt="" loading="lazy"></span>
+      <span class="lead-paper-text">
+        <span class="paper-title">{{ top.title }}</span>
+        <span class="paper-tldr">{{ top.tldr }}</span>
+        {% include venue.html pub=top %}
       </span>
     </a>
-    {%- endfor %}
+    {%- endif %}
+
+    <div class="cards">
+      {%- for pub in rest %}
+      {%- capture url %}{% include pub-url.html pub=pub %}{% endcapture %}
+      <a class="card" href="{{ url }}">
+        {%- if pub.image %}
+        <span class="figure"><img src="{{ pub.image }}" alt="" loading="lazy"></span>
+        {%- endif %}
+        <span class="paper-title">{{ pub.title }}</span>
+        {% include venue.html pub=pub %}
+      </a>
+      {%- endfor %}
+    </div>
+
+    <p class="more"><a href="/publications/">All publications</a></p>
   </div>
 </section>

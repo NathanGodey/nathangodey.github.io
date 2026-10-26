@@ -35,7 +35,7 @@ Content changes should only touch `_data/`, `_posts/` and `img/`. Don't edit gen
 
 ## Featured papers (home page)
 
-Set `featured: N` on entries; the home page shows them in increasing `N`. `featured: 1` is the large "Featured" paper next to the bio; the next six fill the 3-column grid (keep it at 6 so rows stay full). Featured papers need an `image`. Remove the field to unfeature.
+Set `featured: N` on entries; the home page shows them in increasing `N`. `featured: 1` opens the "Selected papers" section as a wide entry with its summary; the next six fill the 3-column grid (keep it at 6 so rows stay full). Featured papers need an `image`. Remove the field to unfeature.
 
 ## When a paper is accepted
 
@@ -45,7 +45,7 @@ Change `venue` and `year`, replace the BibTeX with the proceedings version if on
 
 - Plain, factual wording. No exclamation marks, no emoji, no "excited to share".
 - Dates in news use the arXiv or announcement date. Don't guess dates.
-- Font is Lato everywhere. One accent color (`--accent`, used for venue tags and the "Featured" label) plus the link blue; don't add more colors, shadows or hover animations. New colors go in the tokens at the top of `main.scss`, with a dark-mode value.
+- Editorial look: Lato everywhere (light weight for large headings), warm off-white background, section labels in a left margin column (`.row`). Links are text-colored with a rust underline. The rust `--accent` is the only accent (link underlines, accepted venues, active nav). No eyebrow labels, badges, pills or shadows. New colors go in the tokens at the top of `main.scss`, with a dark-mode value.
 
 ## Check before committing
 

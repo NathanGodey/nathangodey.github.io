@@ -1,0 +1,8 @@
+{%- comment -%} Venue line: accepted venues in the accent color, preprints muted. {%- endcomment -%}
+{%- assign pub = include.pub -%}
+<span class="venue{% if pub.venue == 'Preprint' %} venue--preprint{% endif %}">
+  {%- if pub.venue == "Preprint" %}Preprint, {{ pub.year }}
+  {%- elsif pub.venue contains "PhD thesis" %}PhD thesis, {{ pub.year }}
+  {%- else %}{{ pub.venue }}{% endif -%}
+  {%- if pub.award %}<span class="award"> · {{ pub.award }}</span>{% endif -%}
+</span>
