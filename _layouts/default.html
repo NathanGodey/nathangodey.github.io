@@ -40,7 +40,7 @@
 </head>
 <body>
   <header class="site-header">
-    <a class="site-name" href="/">{{ site.title }}</a>
+    <a class="site-name" href="/"{% if page.url == "/" %} aria-current="page"{% endif %}>Home</a>
     <nav>
       {%- for item in site.nav %}
       {%- assign active = false %}

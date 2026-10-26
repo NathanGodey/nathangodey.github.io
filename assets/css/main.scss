@@ -80,17 +80,14 @@ time, .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
   padding: 1.75rem 0 1.25rem;
   margin-bottom: 2.5rem;
 
-  a { text-decoration: none; }
-  .site-name { font-weight: 700; letter-spacing: 0.01em; }
+  a { color: var(--muted); text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+  a:hover { color: var(--text); }
+  a[aria-current] { color: var(--text); border-bottom-color: var(--accent); }
 
   nav {
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem 1.5rem;
-
-    a { color: var(--muted); padding-bottom: 2px; border-bottom: 2px solid transparent; }
-    a:hover { color: var(--text); }
-    a[aria-current] { color: var(--text); border-bottom-color: var(--accent); }
   }
 }
 
