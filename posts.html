@@ -1,9 +1,9 @@
 ---
-title: Writing
+title: Posts
 description: Notes, tools and announcements.
-permalink: /logbook/
+permalink: /posts/
 ---
-<ul class="writing">
+<ul class="post-list">
   {%- for post in site.posts %}
   <li>
     <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%b %Y" }}</time>

@@ -1,4 +1,4 @@
-# Site settings. Content lives in _data/ (publications, news, people) and _posts/ (writing).
+# Site settings. Content lives in _data/ (publications, news, people) and _posts/ (posts).
 # See CLAUDE.md before editing.
 
 title: Nathan Godey
@@ -18,8 +18,8 @@ google_analytics: G-HD7R5X335C
 nav:
   - title: Publications
     url: /publications/
-  - title: Writing
-    url: /logbook/
+  - title: Posts
+    url: /posts/
   - title: Teaching
     url: https://github.com/NathanGodey/AdvancedNLP
   - title: CV
