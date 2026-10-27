@@ -1,0 +1,386 @@
+---
+---
+// Single stylesheet for the whole site. Colors are tokens on :root; dark mode redefines them.
+// Layout idea: an editorial page with section labels in a left margin column (.row).
+
+:root {
+  --bg: #fbfaf7;
+  --text: #1f1d1a;
+  --muted: #77726b;
+  --rule: #e4e0d8;
+  --accent: #a8431a;          // rust: link underlines, accepted venues
+  --panel: #f1eee8;           // abstract / BibTeX panels, code
+  --figure-bg: #ffffff;       // paper figures are drawn on white
+  --tip: #2f7a4f;
+  --info: #3c6e9e;
+  --warn: #a8431a;
+
+  --font: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --width: 64rem;
+  --label: 11rem;             // width of the left margin column
+  --measure: 44rem;           // max line length for reading pages
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171614;
+    --text: #ebe7e0;
+    --muted: #9b958c;
+    --rule: #2f2c28;
+    --accent: #e4875a;
+    --panel: #22201d;
+    --figure-bg: #f3f1ec;
+    --tip: #6cc08f;
+    --info: #86b2dc;
+    --warn: #e4875a;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0 auto;
+  max-width: calc(var(--width) + 2.5rem);
+  padding: 0 1.25rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 17px/1.6 var(--font);
+}
+
+a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+a:hover { color: var(--accent); }
+
+h1, h2, h3 { font-weight: 700; line-height: 1.25; }
+h1 { font-size: 2.25rem; font-weight: 300; margin: 0 0 1.5rem; letter-spacing: -0.01em; }
+h2 { font-size: 1.3rem; margin: 2.5rem 0 1rem; }
+h3 { font-size: 1.05rem; margin: 2rem 0 0.5rem; }
+
+img { max-width: 100%; height: auto; }
+
+time, .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ---------- Header / footer ---------- */
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+  padding: 1.75rem 0 1.25rem;
+  margin-bottom: 2.5rem;
+
+  a { color: var(--muted); text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+  a:hover { color: var(--text); }
+  a[aria-current] { color: var(--text); border-bottom-color: var(--accent); }
+
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+  }
+}
+
+.site-footer {
+  margin: 5rem 0 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- Margin-label rows ---------- */
+
+.row {
+  display: grid;
+  grid-template-columns: var(--label) minmax(0, 1fr);
+  gap: 0 2rem;
+  padding: 2.25rem 0;
+  border-top: 1px solid var(--rule);
+
+  .row-label {
+    margin: 0;
+    color: var(--muted);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 46rem) {
+    grid-template-columns: 1fr;
+
+    .row-label { margin-bottom: 1rem; }
+  }
+}
+
+/* ---------- Home ---------- */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13rem;
+  gap: 3rem;
+  align-items: start;
+  padding-bottom: 3rem;
+
+  .name {
+    margin: 0;
+    font-size: 3.25rem;
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .role { margin: 0.6rem 0 1.75rem; color: var(--muted); font-size: 1.1rem; }
+  .lead { margin: 0 0 1.5rem; max-width: 40rem; font-size: 1.15rem; line-height: 1.65; }
+
+  .portrait {
+    width: 13rem;
+    height: 13rem;
+    margin-top: 0.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  @media (max-width: 46rem) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+
+    .portrait { order: -1; width: 7rem; height: 7rem; margin: 0; }
+    .name { font-size: 2.5rem; }
+  }
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 0;
+}
+
+.news {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: var(--measure);
+
+  li { display: flex; gap: 1.5rem; padding: 0 0 0.6rem; }
+  time { flex: 0 0 5rem; }
+}
+
+/* Paper figures: white tile, hairline edge, square-ish corners. */
+.figure {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--figure-bg);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+
+  img {
+    position: absolute;
+    inset: 0.6rem;
+    width: calc(100% - 1.2rem);
+    height: calc(100% - 1.2rem);
+    object-fit: contain;
+    transition: transform 0.25s ease;
+  }
+}
+
+.lead-paper, .card {
+  color: inherit;
+  text-decoration: none;
+
+  .paper-title { display: block; font-weight: 700; line-height: 1.35; }
+  &:hover { color: inherit; }
+  &:hover .paper-title { color: var(--accent); }
+  &:hover .figure img { transform: scale(1.02); }
+}
+
+.lead-paper {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: center;
+  margin-bottom: 2.75rem;
+
+  .lead-paper-text { display: block; }
+  .paper-title { font-size: 1.35rem; margin-bottom: 0.6rem; }
+  .paper-tldr { display: block; margin-bottom: 0.75rem; color: var(--muted); line-height: 1.55; }
+
+  @media (max-width: 40rem) { grid-template-columns: 1fr; gap: 1rem; }
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2.25rem 1.5rem;
+
+  @media (max-width: 60rem) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 30rem) { grid-template-columns: 1fr; }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+
+  .paper-title { margin: 0.75rem 0 0.3rem; font-size: 0.98rem; }
+}
+
+.venue { display: block; font-size: 0.9rem; color: var(--accent); font-weight: 700; }
+.venue--preprint { color: var(--muted); font-weight: 400; }
+.award { color: var(--muted); font-weight: 400; font-style: italic; }
+
+.more { margin: 2.25rem 0 0; }
+
+/* ---------- Publications ---------- */
+
+.page { max-width: var(--measure); }
+.page--wide { max-width: none; }
+
+.intro-note { color: var(--muted); margin: -0.5rem 0 2rem; }
+
+.row-label.year {
+  font-size: 2.25rem;
+  font-weight: 300;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pubs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 46rem;
+}
+
+.pub {
+  margin: 0 0 1.75rem;
+
+  &:last-child { margin-bottom: 0; }
+
+  .pub-title { display: block; font-weight: 700; line-height: 1.4; text-decoration: none; }
+  .pub-title:hover { color: var(--accent); }
+  .pub-authors { margin-top: 0.15rem; font-size: 0.95rem; }
+  .pub-authors a { text-decoration-color: var(--rule); }
+  .pub-authors a:hover { text-decoration-color: var(--accent); }
+  .me { font-weight: 700; }
+  sup { font-size: 0.7em; line-height: 0; }
+  .pub-venue { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75rem; margin-top: 0.1rem; }
+  .pub-venue .venue { display: inline; }
+  .pub-note { color: var(--muted); font-size: 0.88rem; }
+}
+
+.pub-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.1rem;
+  margin-top: 0.3rem;
+  font-size: 0.9rem;
+
+  a, button { color: var(--muted); }
+  a:hover, button:hover { color: var(--accent); }
+  a { text-decoration-color: var(--rule); }
+
+  button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 3px;
+  }
+  button[aria-expanded="true"] { color: var(--text); text-decoration-color: var(--accent); }
+}
+
+.pub-panel {
+  position: relative;
+  margin-top: 0.75rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--panel);
+  border-left: 2px solid var(--accent);
+  font-size: 0.92rem;
+
+  p { margin: 0; }
+  pre { margin: 0; padding: 0; background: none; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; }
+
+  .copy {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.8rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .copy:hover { color: var(--accent); }
+}
+
+/* ---------- Posts ---------- */
+
+.post-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; }
+  time { flex: 0 0 5rem; line-height: 1.6; }
+  a { font-weight: 700; text-decoration: none; }
+  p { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.95rem; }
+}
+
+.post {
+  max-width: var(--measure);
+
+  .meta { margin: -1rem 0 2.5rem; }
+  img { display: block; margin: 1.5rem auto; }
+  iframe { max-width: 100%; }
+}
+
+.back { max-width: var(--measure); margin-top: 3rem; }
+
+/* Callouts kept from the previous theme's Markdown syntax: {: .prompt-tip } etc. */
+.prompt-tip, .prompt-info, .prompt-warning, .prompt-danger {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 2px solid var(--info);
+  background: var(--panel);
+
+  p { margin: 0; }
+}
+.prompt-tip { border-left-color: var(--tip); }
+.prompt-warning, .prompt-danger { border-left-color: var(--warn); }
+
+/* ---------- Generic content ---------- */
+
+blockquote { margin: 1.25rem 0; padding-left: 1rem; border-left: 2px solid var(--rule); color: var(--muted); }
+
+code { font-family: var(--mono); font-size: 0.86em; }
+:not(pre) > code { padding: 0.1em 0.3em; background: var(--panel); border-radius: 2px; }
+pre { overflow-x: auto; padding: 0.75rem 1rem; background: var(--panel); line-height: 1.45; }
+.highlight pre { margin: 0; }
+.highlight table, .highlight td { border: 0; padding: 0; }
+.highlight .lineno { color: var(--muted); padding-right: 1rem; user-select: none; }
+
+table { border-collapse: collapse; margin: 1.25rem 0; font-size: 0.92rem; }
+th, td { padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--rule); text-align: left; }
+
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+
+.pdf { display: block; width: 100%; height: 80vh; margin-top: 1rem; border: 1px solid var(--rule); }
+
+mjx-container { overflow-x: auto; overflow-y: hidden; }

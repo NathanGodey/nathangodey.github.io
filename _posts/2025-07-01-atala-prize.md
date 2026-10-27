@@ -7,7 +7,7 @@ description: "My PhD thesis received the 2025 ATALA best PhD thesis award at the
 tags: [thesis, award]
 ---
 
-I'm very happy to share that my PhD thesis, [*Improving Representations for Language Modeling*]({% post_url 2024-09-15-thesis %}), was awarded the **2025 [ATALA](https://www.atala.org/) best PhD thesis prize** at the TALN conference (Marseille, July 2025).
+I'm very happy to share that my PhD thesis, [*Improving Representations for Language Modeling*](/publications/#thesis), was awarded the **2025 [ATALA](https://www.atala.org/) best PhD thesis prize** at the TALN conference (Marseille, July 2025).
 
 <img src="/img/posts/atala_prize.jpeg" alt="Receiving the ATALA prize certificate at TALN 2025" style="max-width:500px;"/>
 

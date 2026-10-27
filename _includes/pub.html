@@ -1,0 +1,34 @@
+{%- comment -%}
+  One publication entry.
+  Usage: {% include pub.html pub=pub %}
+{%- endcomment -%}
+{%- assign pub = include.pub -%}
+{%- capture primary %}{% include pub-url.html pub=pub %}{% endcapture -%}
+<li class="pub" id="{{ pub.id }}">
+  <div class="pub-body">
+    <a class="pub-title" href="{{ primary }}">{{ pub.title }}</a>
+    <div class="pub-authors">{% include authors.html authors=pub.authors %}</div>
+    <div class="pub-venue">
+      {% include venue.html pub=pub %}
+      {%- if pub.note %}<span class="pub-note">{{ pub.note }}</span>{% endif %}
+    </div>
+    <div class="pub-links">
+      {%- if pub.links.pdf %}<a href="{{ pub.links.pdf }}">Paper</a>{% endif %}
+      {%- if pub.links.arxiv %}<a href="{{ pub.links.arxiv }}">arXiv</a>{% endif %}
+      {%- if pub.links.project %}<a href="{{ pub.links.project }}">Project page</a>{% endif %}
+      {%- if pub.links.code %}<a href="{{ pub.links.code }}">Code</a>{% endif %}
+      {%- if pub.links.models %}<a href="{{ pub.links.models }}">Models</a>{% endif %}
+      {%- if pub.abstract %}<button type="button" data-toggle="abstract" aria-expanded="false">Abstract</button>{% endif %}
+      {%- if pub.bibtex %}<button type="button" data-toggle="bib" aria-expanded="false">BibTeX</button>{% endif %}
+    </div>
+    {%- if pub.abstract %}
+    <div class="pub-panel" data-panel="abstract" hidden><p>{{ pub.abstract }}</p></div>
+    {%- endif %}
+    {%- if pub.bibtex %}
+    <div class="pub-panel" data-panel="bib" hidden>
+      <pre><code>{{ pub.bibtex | xml_escape }}</code></pre>
+      <button type="button" class="copy" data-copy>Copy</button>
+    </div>
+    {%- endif %}
+  </div>
+</li>

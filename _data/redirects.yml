@@ -1,0 +1,7 @@
+# Old URLs from the previous (Chirpy) site. Publication posts are handled via `old_url` in publications.yml.
+- from: /logbook/
+  to: /posts/
+- from: /about-me/
+  to: /cv/
+- from: /course/
+  to: https://github.com/NathanGodey/AdvancedNLP

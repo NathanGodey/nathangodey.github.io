@@ -1,0 +1,21 @@
+---
+title: Publications
+description: Papers by Nathan Godey, with links, abstracts and BibTeX.
+math: true
+permalink: /publications/
+wide: true
+---
+<p class="intro-note">Newest first. Also on <a href="https://scholar.google.com/citations?user=YIbsNP8AAAAJ">Google Scholar</a>.</p>
+
+{%- assign by_year = site.data.publications | group_by: "year" | sort: "name" | reverse %}
+{%- for group in by_year %}
+<section class="row">
+  <h2 class="row-label year">{{ group.name }}</h2>
+  <ul class="pubs">
+    {%- assign pubs = group.items | sort: "date" | reverse %}
+    {%- for pub in pubs %}
+    {% include pub.html pub=pub %}
+    {%- endfor %}
+  </ul>
+</section>
+{%- endfor %}
