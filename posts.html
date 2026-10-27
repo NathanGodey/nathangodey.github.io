@@ -5,6 +5,7 @@ permalink: /posts/
 ---
 <ul class="post-list">
   {%- for post in site.posts %}
+  {%- if post.hidden %}{% continue %}{% endif %}
   <li>
     <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%b %Y" }}</time>
     <div>

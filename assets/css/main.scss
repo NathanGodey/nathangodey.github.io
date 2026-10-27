@@ -353,6 +353,72 @@ time, .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .back { max-width: var(--measure); margin-top: 3rem; }
 
+/* Loss-levels slider (_includes/html/loss_levels.html) */
+.loss-levels {
+  margin: 2rem 0;
+
+  .ll-readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 1rem; }
+  .ll-loss { font-size: 2.5rem; font-weight: 300; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .ll-meta { color: var(--muted); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+
+  .ll-sets, .ll-kind {
+    display: flex; gap: 1rem; margin-top: 0.5rem; font-size: 0.9rem;
+    button {
+      padding: 0; border: 0; background: none; font: inherit; color: var(--muted); cursor: pointer;
+      text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 0.2em;
+    }
+    button[aria-pressed="true"] { color: var(--text); text-decoration-color: var(--accent); }
+  }
+  .ll-sets[hidden] { display: none; }
+  .ll-chart { display: block; width: 100%; margin-top: 0.75rem; cursor: pointer; font-family: var(--font); }
+  .ll-grid { stroke: var(--rule); }
+  .ll-tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .ll-tok { font-size: 10px; opacity: 0.8; }
+  .ll-arrowhead { fill: var(--muted); }
+  .ll-curve { fill: none; stroke: var(--text); stroke-width: 1.75; }
+  .ll-dot { fill: var(--accent); stroke: var(--bg); stroke-width: 2; pointer-events: none; }
+  .ll-ref {
+    line { stroke: var(--muted); stroke-width: 0.75; }
+    circle { fill: var(--bg); stroke: var(--text); stroke-width: 1.5; }
+    text { fill: var(--muted); font-size: 11px; }
+    &:hover line, &:focus line { stroke-width: 1.5; }
+    &:hover circle, &:focus circle { fill: var(--text); }
+    &:hover text, &:focus text { font-weight: 700; }
+    &:focus { outline: none; }
+  }
+
+  .ll-slider { display: block; width: 100%; margin: 0.75rem 0 0.25rem; accent-color: var(--accent); }
+  .ll-scale { display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); font-size: 0.8rem; }
+
+  .ll-kind { margin: 1.5rem 0 0.75rem; }
+  .ll-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; }
+  .ll-msg { color: var(--muted); }
+  .ll-item {
+    padding: 0.6rem 1rem;
+    background: var(--panel);
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    &:hover, &:focus-visible { border-left-color: var(--rule); outline: none; }
+    &.open { border-left-color: var(--accent); }
+  }
+  .ll-text {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    // collapsed: first two lines only
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+  .ll-item.open .ll-text { display: block; overflow: visible; }
+  .ll-stem { font-weight: 700; }
+  .ll-end { margin-left: 0.25em; color: var(--muted); font-style: italic; }
+}
+
 /* Callouts kept from the previous theme's Markdown syntax: {: .prompt-tip } etc. */
 .prompt-tip, .prompt-info, .prompt-warning, .prompt-danger {
   margin: 1.25rem 0;

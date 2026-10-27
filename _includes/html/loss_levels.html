@@ -1,0 +1,312 @@
+<figure class="loss-levels" data-src="/assets/loss-levels/">
+  <div class="ll-readout">
+    <span class="ll-loss">&nbsp;</span>
+    <span class="ll-meta"></span>
+  </div>
+  <div class="ll-sets" role="group" aria-label="Evaluation data" hidden>
+    <button type="button" data-set="fwe" aria-pressed="true">FineWeb-Edu</button>
+    <button type="button" data-set="fw" aria-pressed="false">FineWeb</button>
+  </div>
+  <svg class="ll-chart" role="img" aria-label="Loss against training step, with reference models"></svg>
+  <input class="ll-slider" type="range" min="0" max="0" value="0" aria-label="Training checkpoint, by loss" disabled>
+  <div class="ll-scale"><span class="ll-lo"></span><span class="ll-hi"></span></div>
+  <div class="ll-kind" role="group" aria-label="Samples">
+    <button type="button" data-kind="s" aria-pressed="true">Prompted</button>
+    <button type="button" data-kind="u" aria-pressed="false">Unconditional</button>
+  </div>
+  <ol class="ll-list" aria-live="polite"><li class="ll-msg">Loading samples…</li></ol>
+</figure>
+<script>
+(function () {
+  var fig = document.currentScript.previousElementSibling;
+  var src = fig.getAttribute('data-src');
+  var $ = function (c) { return fig.querySelector(c); };
+  var slider = $('.ll-slider'), list = $('.ll-list');
+  // Samples shown: prompted ('s') or unconditional ('u'). open: which ones are expanded, kept across checkpoints.
+  var kind = 's', open = {};
+  var chart = $('.ll-chart'), NS = 'http://www.w3.org/2000/svg';
+  var index, cache = {}, dot;
+  // Which loss to show: held-out FineWeb-Edu ('fwe') or FineWeb ('fw') when evaluated, else training loss.
+  var mode = 'train';
+  var SETS = { fwe: 'held-out FineWeb-Edu loss', fw: 'held-out FineWeb loss' };
+  var TOKENS_PER_STEP = 1048576;   // global batch of the run: 512 sequences x 2048 tokens
+  function tokens(step) {
+    var n = step * TOKENS_PER_STEP;
+    return n >= 1e9 ? (n / 1e9).toFixed(n >= 1e10 ? 0 : 1) + 'B' : n >= 1e6 ? Math.round(n / 1e6) + 'M' : Math.round(n / 1e3) + 'k';
+  }
+  function L(c) { return mode !== 'train' && c[mode] != null ? c[mode] : c.loss; }
+
+  // Reference losses in nats per SmolLM2 token, measured on the same held-out docs as the checkpoints
+  // (loss-levels-samples/eval_refs.py): each model scores the text with its own tokenizer, and its
+  // bits/byte is converted back with the set's bytes per SmolLM2 token. N-grams: SmolLM2 tokens,
+  // absolute discounting, trained on 100M FineWeb-Edu tokens. est: not measured (see the comment).
+  var REFS = [
+    { name: 'unigram', fwe: 7.486, fw: 7.648 },
+    { name: 'bigram', fwe: 5.572, fw: 5.926 },
+    { name: 'trigram', fwe: 5.224, fw: 5.697 },
+    { name: 'GPT-1 (117M)', short: 'GPT-1', fwe: 4.073, fw: 4.191 },   // its tokenizer lowercases: approximate
+    { name: 'Pythia-70M', fwe: 3.501, fw: 3.726 },
+    { name: 'Pythia-160M', fwe: 3.108, fw: 3.327 },
+    { name: 'Pythia-410M', fwe: 2.738, fw: 2.943 },
+    { name: 'GPT-2 124M · nanoGPT speedrun', short: 'GPT-2 124M · nanoGPT', fwe: 3.177, fw: 3.370 },   // the speedrun target is GPT-2 124M's loss
+    // noise ZO speedrun record (3.499 on its FineWeb val) scaled by GPT-2 124M's measured / published loss
+    { name: 'noise ZO speedrun', short: 'noise ZO', fwe: 3.177 * 3.499 / 3.29, fw: 3.370 * 3.499 / 3.29, est: true },
+    { name: 'GPT-2 355M', fwe: 2.921, fw: 3.108 },
+    { name: 'GPT-2 774M', fwe: 2.790, fw: 2.975 },
+    { name: 'GPT-2 XL (1.5B)', short: 'GPT-2 1.5B', fwe: 2.711, fw: 2.896 }
+  ];
+
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  function nearest(key, v) {
+    var best = 0;
+    index.ckpts.forEach(function (c, j) {
+      if (Math.abs(key(c) - v) < Math.abs(key(index.ckpts[best]) - v)) best = j;
+    });
+    return best;
+  }
+
+  function jump(j) { slider.value = j; render(); }
+
+  // Linear step on x, log loss on y; redrawn on resize so text keeps its size.
+  // The save at step 651 covered levels 3.90-3.77 at once (the loss EMA fell 0.14 in 6 steps),
+  // which draws as a step. The drawn curve bridges it; the readout keeps each checkpoint's own loss.
+  var BRIDGE = ['loss-3.92', 'loss-3.91', 'loss-3.77', 'loss-3.76'];
+  var X, Y, line;
+  function lineAt(step) {
+    for (var k = 1; k < line.length; k++) {
+      if (line[k].step >= step) {
+        var a = line[k - 1], b = line[k];
+        return L(a) + (L(b) - L(a)) * (step - a.step) / (b.step - a.step);
+      }
+    }
+    return L(line[line.length - 1]);
+  }
+  function draw() {
+    var cs = index.ckpts, last = cs[cs.length - 1], w = chart.clientWidth || 600, h = 330;
+    var m = { l: 28, r: 12, t: 10, b: 38 }, lo = 2.2, hi = 11;
+    X = function (step) { return m.l + step / last.step * (w - m.l - m.r); };
+    Y = function (loss) { return m.t + Math.log(hi / loss) / Math.log(hi / lo) * (h - m.t - m.b); };
+    chart.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    chart.setAttribute('height', h);
+    while (chart.firstChild) chart.removeChild(chart.firstChild);
+    line = cs.filter(function (c) { return mode !== 'train' ? c[mode] != null : BRIDGE.indexOf(c.branch) < 0; });
+
+    var mk = el('marker', { id: 'll-arrow', viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' },
+                el('defs', {}, chart));
+    el('path', { d: 'M0 0L8 4L0 8z', class: 'll-arrowhead' }, mk);
+
+    [3, 4, 5, 6, 8, 10].forEach(function (v) {
+      el('line', { class: 'll-grid', x1: m.l, x2: w - m.r, y1: Y(v), y2: Y(v) }, chart);
+      el('text', { class: 'll-tick', x: m.l - 6, y: Y(v) + 4, 'text-anchor': 'end' }, chart).textContent = v;
+    });
+    var px = (w - m.l - m.r) / last.step, every = [1000, 2000, 5000, 10000, 20000].filter(function (e) { return e * px >= 70; })[0] || 50000;
+    for (var v = 0; v <= last.step; v += every) {
+      el('text', { class: 'll-tick', x: X(v), y: h - 20, 'text-anchor': 'middle' }, chart).textContent = v ? v.toLocaleString('en-US') : 'step 0';
+      el('text', { class: 'll-tick ll-tok', x: X(v), y: h - 6, 'text-anchor': 'middle' }, chart).textContent = v ? tokens(v) : 'tokens';
+    }
+
+    el('path', {
+      class: 'll-curve',
+      d: line.map(function (c, j) { return (j ? 'L' : 'M') + X(c.step).toFixed(1) + ' ' + Y(L(c)).toFixed(1); }).join('')
+    }, chart);
+
+    // Each reference gets a marker where the curve first reaches its loss, and a label in the
+    // empty space above the flat tail, with an arrow to the marker. Unreached ones sit at the right edge.
+    var refs = REFS.map(function (r) { return { name: r.name, short: r.short || r.name, est: r.est, loss: r[mode === 'fw' ? 'fw' : 'fwe'] }; })
+      .filter(function (r) { return r.loss != null; })
+      .sort(function (a, b) { return b.loss - a.loss; });
+    // Each label goes next to its marker: the nearest free spot, searched in rings of growing distance
+    // (rightwards first), that keeps clear of the curve, the other markers, labels placed earlier and
+    // the plot edges. Labels sit beside close markers; an arrow is drawn only when the label had to move away.
+    var items = refs.map(function (r) {
+      var j = -1;
+      cs.some(function (c, k) { if (line.indexOf(c) >= 0 && L(c) <= r.loss) { j = k; return true; } });
+      return { r: r, j: j, px: j < 0 ? X(last.step) : X(cs[j].step), py: Y(r.loss) };
+    }).filter(function (it) { return it.j >= 0; });   // references the model hasn't reached yet stay hidden
+    function curveY(x) { return Y(lineAt((x - m.l) / (w - m.l - m.r) * last.step)); }
+    var TH = 11, PAD = 3, boxes = [];
+    function free(b, self) {
+      if (b.x0 < m.l + 2 || b.x1 > w - m.r || b.y0 < m.t || b.y1 > h - m.b - 2) return false;
+      if (boxes.some(function (o) { return b.x0 < o.x1 + PAD && o.x0 < b.x1 + PAD && b.y0 < o.y1 + PAD && o.y0 < b.y1 + PAD; })) return false;
+      if (items.some(function (o) { return o !== self && o.px > b.x0 - 5 && o.px < b.x1 + 5 && o.py > b.y0 - 5 && o.py < b.y1 + 5; })) return false;
+      var prev = null;
+      for (var x = Math.max(b.x0 - PAD, m.l); x <= Math.min(b.x1 + PAD, w - m.r); x += 2) {
+        var cy = curveY(x), side = cy < b.y0 - PAD ? -1 : cy > b.y1 + PAD ? 1 : 0;
+        if (side === 0 || (prev !== null && side !== prev)) return false;   // through the box, or across it between samples
+        prev = side;
+      }
+      return true;
+    }
+    var RINGS = [10, 16, 24, 34, 46, 60, 78, 100, 130, 170], DIRS = [];
+    [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7, 8].forEach(function (k) { DIRS.push(k * Math.PI / 8); });
+
+    items.forEach(function (it) {
+      var r = it.r, j = it.j;
+      var g = el('g', { class: 'll-ref', tabindex: 0, role: 'button' }, chart);
+      el('title', {}, g).textContent = r.name + (r.est ? ' ≈ ' : ': ') + r.loss.toFixed(2) + (r.est ? ' (estimated)' : '') +
+        '; first reached at step ' + cs[j].step.toLocaleString('en-US') + ' (' + tokens(cs[j].step) + ' tokens), click to jump there';
+      var lead = el('line', { 'marker-end': 'url(#ll-arrow)' }, g);
+      el('circle', { cx: it.px, cy: it.py, r: 3.5 }, g);
+      var text = el('text', {}, g);
+      var narrow = w < 500;   // phones: short names, no suffix (the tooltip has both)
+      text.textContent = (narrow ? r.short : r.name) + (r.est ? ' ≈' : ' ') + r.loss.toFixed(2) + '';
+      var tw = text.getComputedTextLength() || 6 * text.textContent.length;
+
+      // A spot is the label's near point (ax, ay): the box starts there going right, or ends there going left.
+      var best = null;
+      RINGS.some(function (d) {
+        return DIRS.some(function (a) {
+          var ax = it.px + d * Math.cos(a), ay = it.py + d * Math.sin(a), left = Math.cos(a) < -1e-6;
+          var b = { x0: left ? ax - tw : ax, x1: left ? ax : ax + tw, y0: ay - TH / 2, y1: ay + TH / 2, ax: ax, ay: ay, left: left, d: d };
+          if (free(b, it)) { best = b; return true; }
+          return false;
+        });
+      });
+      if (!best) best = { x0: it.px + 10, x1: it.px + 10 + tw, y0: it.py - TH / 2, y1: it.py + TH / 2, ax: it.px + 10, ay: it.py, left: false, d: 10 };
+      boxes.push(best);
+      text.setAttribute('x', best.ax);
+      text.setAttribute('y', best.ay + 4);
+      text.setAttribute('text-anchor', best.left ? 'end' : 'start');
+      if (best.d > 16) {
+        var dx = it.px - best.ax, dy = it.py - best.ay, dd = Math.hypot(dx, dy);
+        lead.setAttribute('x1', best.ax);
+        lead.setAttribute('y1', best.ay);
+        lead.setAttribute('x2', it.px - dx / dd * 6);
+        lead.setAttribute('y2', it.py - dy / dd * 6);
+      } else lead.setAttribute('visibility', 'hidden');
+      var go = function () { jump(j < 0 ? cs.length - 1 : j); };
+      g.addEventListener('click', go);
+      g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    });
+
+    dot = el('circle', { class: 'll-dot', r: 5 }, chart);
+    place();
+  }
+
+  function place() {
+    if (!dot) return;
+    var c = index.ckpts[+slider.value];
+    dot.setAttribute('cx', X(c.step));
+    dot.setAttribute('cy', Y(lineAt(c.step)));
+  }
+
+  chart.addEventListener('click', function (e) {
+    if (!index || e.target.closest('.ll-ref')) return;
+    var p = chart.getBoundingClientRect(), x = e.clientX - p.left;
+    var cs = index.ckpts, best = 0;
+    cs.forEach(function (c, j) { if (Math.abs(X(c.step) - x) < Math.abs(X(cs[best].step) - x)) best = j; });
+    jump(best);
+  });
+
+  function load(i) {
+    var br = index.ckpts[i].branch;
+    if (!cache[br]) {
+      cache[br] = fetch(src + br + '.json').then(function (r) { return r.json(); });
+      cache[br].catch(function () { delete cache[br]; });
+    }
+    return cache[br];
+  }
+
+  function fmt(c) {
+    return L(c).toFixed(2);
+  }
+
+  // One item per sample, clamped to two lines until clicked.
+  function build() {
+    while (list.firstChild) list.removeChild(list.firstChild);
+    var n = kind === 's' ? index.stems.length : index.n_uncond;
+    for (var k = 0; k < n; k++) {
+      var li = document.createElement('li');
+      li.className = 'll-item' + (open[kind + k] ? ' open' : '');
+      li.tabIndex = 0;
+      li.setAttribute('role', 'button');
+      li.setAttribute('aria-expanded', !!open[kind + k]);
+      li.dataset.k = k;
+      li.innerHTML = '<p class="ll-text"><span class="ll-stem"></span><span class="ll-cont"></span>' +
+        '<span class="ll-end" hidden>[end of document]</span></p>';
+      list.appendChild(li);
+    }
+  }
+
+  function toggle(li) {
+    var key = kind + li.dataset.k;
+    open[key] = !open[key];
+    li.classList.toggle('open', open[key]);
+    li.setAttribute('aria-expanded', open[key]);
+  }
+
+  list.addEventListener('click', function (e) {
+    var li = e.target.closest('.ll-item');
+    if (li && !String(window.getSelection())) toggle(li);   // selecting text doesn't toggle
+  });
+  list.addEventListener('keydown', function (e) {
+    var li = e.target.closest('.ll-item');
+    if (li && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggle(li); }
+  });
+
+  function render() {
+    var i = +slider.value, c = index.ckpts[i], v = kind;
+    $('.ll-loss').textContent = fmt(c);
+    $('.ll-meta').textContent = (mode !== 'train' && c[mode] != null ? SETS[mode] : 'training loss') +
+      ' (nats/token) · step ' + c.step.toLocaleString('en-US') + ' · ' + tokens(c.step) + ' tokens';
+    slider.setAttribute('aria-valuetext', 'loss ' + fmt(c) + ', step ' + c.step);
+    place();
+    load(i).then(function (d) {
+      if (+slider.value !== i || kind !== v) return;   // a newer request superseded this one
+      list.querySelectorAll('.ll-item').forEach(function (li) {
+        var k = +li.dataset.k, row = d[v][k];
+        li.querySelector('.ll-stem').textContent = v === 's' ? index.stems[k] : '';
+        li.querySelector('.ll-cont').textContent = row[0];
+        li.querySelector('.ll-end').hidden = !row[1];
+      });
+    });
+    for (var j = Math.max(0, i - 2); j <= Math.min(index.ckpts.length - 1, i + 2); j++) load(j);
+  }
+
+  fetch(src + 'index.json').then(function (r) { return r.json(); }).then(function (d) {
+    index = d;
+    var n = d.ckpts.length;
+    slider.max = n - 1;
+    slider.disabled = false;
+    function ends() {
+      $('.ll-lo').textContent = 'loss ' + fmt(d.ckpts[0]) + ', untrained';
+      $('.ll-hi').textContent = fmt(d.ckpts[n - 1]) + ', end of training';
+    }
+    if (d.ckpts.some(function (c) { return c.fwe != null; })) {
+      mode = 'fwe';
+      var sets = $('.ll-sets');
+      sets.hidden = false;
+      sets.addEventListener('click', function (e) {
+        var b = e.target.closest('button');
+        if (!b || b.dataset.set === mode) return;
+        mode = b.dataset.set;
+        sets.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        ends(); draw(); render();
+      });
+    }
+    ends();
+    var kinds = $('.ll-kind');
+    kinds.addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b || b.dataset.kind === kind) return;
+      kind = b.dataset.kind;
+      kinds.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      build(); render();
+    });
+    slider.addEventListener('input', render);
+    build();
+    draw();
+    var t;
+    window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(draw, 100); });
+    render();
+  }).catch(function () {
+    list.innerHTML = '<li class="ll-msg">The samples could not be loaded.</li>';
+  });
+})();
+</script>

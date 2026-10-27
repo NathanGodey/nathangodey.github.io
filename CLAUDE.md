@@ -11,7 +11,7 @@ Personal academic site. Plain Jekyll (no theme), deployed to GitHub Pages by `.g
 | Co-author homepages | `_data/people.yml` |
 | Old URL → new URL | `_data/redirects.yml` (+ `old_url` on publications) |
 | Nav, social links, analytics | `_config.yml` |
-| Posts | `_posts/` (listed at /posts/) |
+| Posts | `_posts/` (listed at /posts/; `hidden: true` + `draft: true` + `sitemap: false` in front matter = online but unlisted, out of the feed and sitemap) |
 | Home / Publications / Posts / CV | `index.html`, `publications.html`, `posts.html`, `cv.md` |
 | Templates | `_layouts/`, `_includes/pub.html`, `_includes/authors.html` |
 | All styles | `assets/css/main.scss` (one file, color tokens at the top) |
