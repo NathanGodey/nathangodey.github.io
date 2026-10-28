@@ -8,7 +8,7 @@ description: "Samples from a 125M model at every loss level from 10.8 to 2.80, n
 tags: [software]
 ---
 
-Ever wondered what a loss of 3.28 means for a language model, roughly speaking? Here is an answer to that. Read what a model writes at any given loss level from 10 to 2.8 (FineWeb-Edu).
+Ever wondered what a loss of 3.28 roughly means for a language model? Here is a tool that lets you check instantly: read what a model writes at any loss from 10 down to 2.8 (measured on FineWeb-Edu).
 
 {% include html/loss_levels.html %}
 
