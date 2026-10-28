@@ -15,7 +15,7 @@ JUDGE_DIR holds <samples folder>/<branch>.json (made by judge_samples.py) with a
 in the same order; each sample row becomes [text, ended, score] (score null if missing).
 Re-run it after new checkpoints are sampled or evaluated.
 
-Writes index.json (stems + one row per checkpoint, in training order) and one
+Writes index.json (stems + one row per checkpoint, in training order) and, per decoding, one
 small <branch>.json per checkpoint, fetched on demand by the page.
 
 Standard library only.
@@ -73,6 +73,8 @@ def main():
     files = sorted(a.samples.glob("loss-*.json"))
     ckpts, stems, n_dec = [], None, {}
     OUT.mkdir(parents=True, exist_ok=True)
+    for f in OUT.glob("**/loss-*.json"):          # older layouts and removed checkpoints
+        f.unlink()
     for f in files:
         d = json.load(open(f))
         br = d["branch"]
@@ -101,10 +103,15 @@ def main():
                 samples[key + "u"] = packed(d2["unconditional"], judged(f"samples_{name}", br), "u")
                 samples[key + "s"] = packed(d2["stems"], judged(f"samples_{name}", br), "s")
                 n_dec[key] = max(n_dec.get(key, 0), len(d2["unconditional"]))
-        json.dump(samples, open(OUT / f"{br}.json", "w"), ensure_ascii=False, separators=(",", ":"))
+        # one file per decoding, so the page only downloads the decoding it shows
+        for key, name in [("", a.samples.name)] + [(k, n) for k, n, _ in DECODES]:
+            if key + "u" in samples:
+                (OUT / name).mkdir(exist_ok=True)
+                json.dump({"u": samples[key + "u"], "s": samples[key + "s"]}, open(OUT / name / f"{br}.json", "w"),
+                          ensure_ascii=False, separators=(",", ":"))
     ckpts.sort(key=lambda c: c["step"])
-    decodings = [{"key": "", "label": "Sampling (temperature 1)", "n_uncond": len(d["unconditional"])}] + [
-        {"key": k, "label": lab, "n_uncond": n_dec[k]} for k, _, lab in DECODES if k in n_dec]
+    decodings = [{"key": "", "dir": a.samples.name, "label": "Sampling (temperature 1)", "n_uncond": len(d["unconditional"])}] + [
+        {"key": k, "dir": name, "label": lab, "n_uncond": n_dec[k]} for k, name, lab in DECODES if k in n_dec]
     json.dump({"stems": stems, "n_uncond": len(d["unconditional"]), "decodings": decodings,
                "default": DEFAULT if DEFAULT in n_dec else "", "ckpts": ckpts},
               open(OUT / "index.json", "w"), ensure_ascii=False, indent=1)

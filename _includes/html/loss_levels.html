@@ -8,8 +8,11 @@
     <button type="button" data-set="fw" aria-pressed="false">FineWeb</button>
   </div>
   <svg class="ll-chart" role="img" aria-label="Loss against training step, with reference models"></svg>
-  <input class="ll-slider" type="range" min="0" max="0" value="0" aria-label="Training checkpoint, by loss" disabled>
-  <div class="ll-scale"><span class="ll-lo"></span><span class="ll-hi"></span></div>
+  <div class="ll-track">
+    <span class="ll-thumb" aria-hidden="true"></span>
+    <input class="ll-slider" type="range" min="0" max="0" value="0" aria-label="Loss: drag to pick a checkpoint by its loss" disabled>
+  </div>
+  <div class="ll-scale"><span class="ll-lo"></span><span class="ll-hint">← drag to change the loss →</span><span class="ll-hi"></span></div>
   <div class="ll-kind" role="group" aria-label="Samples">
     <button type="button" data-kind="s" aria-pressed="true">Prompted</button>
     <button type="button" data-kind="u" aria-pressed="false">Unconditional</button>
@@ -28,11 +31,11 @@
   var slider = $('.ll-slider'), list = $('.ll-list');
   // Samples shown: prompted ('s') or unconditional ('u'). open: which ones are expanded, kept across checkpoints.
   var kind = 's', open = {};
-  // Decoding: a key of index.decodings ('' = ancestral sampling); its rows are stored as key + 's' / key + 'u'.
+  // Decoding: a key of index.decodings ('' = ancestral sampling); its samples are in <dir>/<branch>.json.
   var decode = '', decodeSel = $('.ll-decode');
   function decoding() { return index.decodings.filter(function (x) { return x.key === decode; })[0]; }
   var chart = $('.ll-chart'), NS = 'http://www.w3.org/2000/svg';
-  var index, cache = {}, dot;
+  var index, cache = {}, ready = {}, dot;
   // Which loss to show: held-out FineWeb-Edu ('fwe') or FineWeb ('fw') when evaluated, else training loss.
   var mode = 'train';
   var SETS = { fwe: 'held-out FineWeb-Edu loss', fw: 'held-out FineWeb loss' };
@@ -264,13 +267,14 @@
   });
 
   function load(i) {
-    var br = index.ckpts[i].branch;
-    if (!cache[br]) {
-      cache[br] = fetch(src + br + '.json').then(function (r) { return r.json(); });
-      cache[br].catch(function () { delete cache[br]; });
+    var key = decoding().dir + '/' + index.ckpts[i].branch;
+    if (!cache[key]) {
+      cache[key] = fetch(src + key + '.json').then(function (r) { return r.json(); });
+      cache[key].then(function () { ready[key] = true; }, function () { delete cache[key]; });
     }
-    return cache[br];
+    return cache[key];
   }
+  function loaded(i) { return ready[decoding().dir + '/' + index.ckpts[i].branch]; }
 
   function fmt(c) {
     return L(c).toFixed(2);
@@ -316,10 +320,20 @@
     $('.ll-meta').textContent = (mode !== 'train' && c[mode] != null ? SETS[mode] : 'training loss') +
       ' (nats/token) · step ' + c.step.toLocaleString('en-US') + ' · ' + tokens(c.step) + ' tokens';
     slider.setAttribute('aria-valuetext', 'loss ' + fmt(c) + ', step ' + c.step);
+    var thumb = $('.ll-thumb'), f = i / Math.max(1, +slider.max);
+    thumb.textContent = fmt(c);
+    thumb.style.left = 'calc(9px + (100% - 18px) * ' + f + ')';   // over the thumb's centre (~18px wide)
     place();
+    // While the slider is being dragged, only the readout and the dot follow it: the samples are
+    // fetched once it rests for a moment, so a fast drag doesn't queue a download per position.
+    clearTimeout(pending);
+    pending = setTimeout(function () { fill(i, v, g); }, loaded(i) ? 0 : 80);
+  }
+  var pending;
+  function fill(i, v, g) {
     load(i).then(function (d) {
       if (+slider.value !== i || kind !== v || decode !== g) return;   // a newer request superseded this one
-      var rows = d[g + v] || [];
+      var rows = d[v] || [];
       var scored = rows.some(function (r) { return r[2] != null; });
       $('.ll-head').hidden = !scored;
       list.classList.toggle('ll-scored', scored);
@@ -339,8 +353,8 @@
           li.style.setProperty('--hue', Math.round((n - 1) / 9 * 120));
         }
       });
+      for (var j = Math.max(0, i - 2); j <= Math.min(index.ckpts.length - 1, i + 2); j++) load(j);
     });
-    for (var j = Math.max(0, i - 2); j <= Math.min(index.ckpts.length - 1, i + 2); j++) load(j);
   }
 
   fetch(src + 'index.json').then(function (r) { return r.json(); }).then(function (d) {
@@ -350,7 +364,7 @@
     slider.disabled = false;
     function ends() {
       $('.ll-lo').textContent = 'loss ' + fmt(d.ckpts[0]) + ', untrained';
-      $('.ll-hi').textContent = fmt(d.ckpts[n - 1]) + ', end of training';
+      $('.ll-hi').textContent = 'loss ' + fmt(d.ckpts[n - 1]) + ', end of training';
     }
     if (d.ckpts.some(function (c) { return c.fwe != null; })) {
       mode = 'fwe';

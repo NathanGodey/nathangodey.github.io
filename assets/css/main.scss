@@ -248,7 +248,9 @@ time, .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* ---------- Publications ---------- */
 
-.page { max-width: var(--measure); }
+// Reading columns are centered in the page area, so on wide screens the text sits near the
+// middle of the window instead of hugging the left edge of the header.
+.page { max-width: var(--measure); margin-inline: auto; }
 .page--wide { max-width: none; }
 
 .intro-note { color: var(--muted); margin: -0.5rem 0 2rem; }
@@ -349,13 +351,14 @@ time, .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .post {
   max-width: var(--measure);
+  margin-inline: auto;
 
   .meta { margin: -1rem 0 2.5rem; }
   img { display: block; margin: 1.5rem auto; }
   iframe { max-width: 100%; }
 }
 
-.back { max-width: var(--measure); margin-top: 3rem; }
+.back { max-width: var(--measure); margin: 3rem auto 0; }
 
 /* Loss-levels slider (_includes/html/loss_levels.html) */
 .loss-levels {
@@ -391,8 +394,23 @@ time, .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
     &:focus { outline: none; }
   }
 
-  .ll-slider { display: block; width: 100%; margin: 0.75rem 0 0.25rem; accent-color: var(--accent); }
+  // The current loss rides above the slider's thumb, so the slider reads as a loss control.
+  .ll-track { position: relative; margin-top: 2.1rem; }
+  .ll-thumb {
+    position: absolute;
+    bottom: 100%;
+    transform: translateX(-50%);
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .ll-slider { display: block; width: 100%; margin: 0.15rem 0 0.25rem; accent-color: var(--accent); }
   .ll-scale { display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); font-size: 0.8rem; }
+  .ll-hint { text-align: center; }
+  @media (max-width: 34rem) { .ll-hint { display: none; } }
 
   .ll-kind { margin: 1.5rem 0 0.75rem; flex-wrap: wrap; align-items: baseline; }
   .ll-decode-label { margin-left: auto; color: var(--muted); }
