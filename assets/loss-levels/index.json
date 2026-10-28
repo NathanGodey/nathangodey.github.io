@@ -22,6 +22,34 @@
   "Dr. Maria Kowalski studies coral reefs. Every summer, Dr."
  ],
  "n_uncond": 20,
+ "decodings": [
+  {
+   "key": "",
+   "label": "Sampling (temperature 1)",
+   "n_uncond": 20
+  },
+  {
+   "key": "q",
+   "label": "Top-p 0.9, temperature 0.7, repetition penalty 1.1",
+   "n_uncond": 20
+  },
+  {
+   "key": "g",
+   "label": "Greedy",
+   "n_uncond": 1
+  },
+  {
+   "key": "r",
+   "label": "Greedy, repetition penalty 1.1",
+   "n_uncond": 1
+  },
+  {
+   "key": "p",
+   "label": "Top-p 0.9, temperature 0.7",
+   "n_uncond": 20
+  }
+ ],
+ "default": "q",
  "ckpts": [
   {
    "branch": "loss-10.80",
@@ -1278,6 +1306,62 @@
    "val": false,
    "fwe": 2.8133,
    "fw": 3.2822
+  },
+  {
+   "branch": "loss-2.86",
+   "step": 28206,
+   "loss": 2.86,
+   "val": false,
+   "fwe": 2.8071,
+   "fw": 3.2751
+  },
+  {
+   "branch": "loss-2.85",
+   "step": 32037,
+   "loss": 2.8499,
+   "val": false,
+   "fwe": 2.7933,
+   "fw": 3.2628
+  },
+  {
+   "branch": "loss-2.84",
+   "step": 35305,
+   "loss": 2.84,
+   "val": false,
+   "fwe": 2.7832,
+   "fw": 3.2537
+  },
+  {
+   "branch": "loss-2.83",
+   "step": 35878,
+   "loss": 2.8298,
+   "val": false,
+   "fwe": 2.7741,
+   "fw": 3.2427
+  },
+  {
+   "branch": "loss-2.82",
+   "step": 36231,
+   "loss": 2.82,
+   "val": false,
+   "fwe": 2.7676,
+   "fw": 3.2362
+  },
+  {
+   "branch": "loss-2.81",
+   "step": 36682,
+   "loss": 2.8099,
+   "val": false,
+   "fwe": 2.7623,
+   "fw": 3.2312
+  },
+  {
+   "branch": "loss-2.80",
+   "step": 37376,
+   "loss": 2.7996,
+   "val": false,
+   "fwe": 2.7507,
+   "fw": 3.2204
   }
  ]
 }

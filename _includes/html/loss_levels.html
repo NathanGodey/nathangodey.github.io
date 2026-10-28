@@ -13,7 +13,11 @@
   <div class="ll-kind" role="group" aria-label="Samples">
     <button type="button" data-kind="s" aria-pressed="true">Prompted</button>
     <button type="button" data-kind="u" aria-pressed="false">Unconditional</button>
+    <label class="ll-decode-label" hidden>Decoding
+      <select class="ll-decode"></select>
+    </label>
   </div>
+  <div class="ll-head" aria-hidden="true" hidden><span>Sample</span><span>Qwen score</span></div>
   <ol class="ll-list" aria-live="polite"><li class="ll-msg">Loading samples…</li></ol>
 </figure>
 <script>
@@ -24,6 +28,9 @@
   var slider = $('.ll-slider'), list = $('.ll-list');
   // Samples shown: prompted ('s') or unconditional ('u'). open: which ones are expanded, kept across checkpoints.
   var kind = 's', open = {};
+  // Decoding: a key of index.decodings ('' = ancestral sampling); its rows are stored as key + 's' / key + 'u'.
+  var decode = '', decodeSel = $('.ll-decode');
+  function decoding() { return index.decodings.filter(function (x) { return x.key === decode; })[0]; }
   var chart = $('.ll-chart'), NS = 'http://www.w3.org/2000/svg';
   var index, cache = {}, dot;
   // Which loss to show: held-out FineWeb-Edu ('fwe') or FineWeb ('fw') when evaluated, else training loss.
@@ -121,9 +128,11 @@
     var refs = REFS.map(function (r) { return { name: r.name, short: r.short || r.name, est: r.est, loss: r[mode === 'fw' ? 'fw' : 'fwe'] }; })
       .filter(function (r) { return r.loss != null; })
       .sort(function (a, b) { return b.loss - a.loss; });
-    // Each label goes next to its marker: the nearest free spot, searched in rings of growing distance
-    // (rightwards first), that keeps clear of the curve, the other markers, labels placed earlier and
-    // the plot edges. Labels sit beside close markers; an arrow is drawn only when the label had to move away.
+    // Each label goes right beside its marker when there is room: the nearest free spot within a
+    // short ring (rightwards first) that keeps clear of the curve, the other markers, labels placed
+    // earlier and the plot edges. Labels that don't fit (the crowded elbow) are stacked in one column
+    // in the empty space above the curve, in loss order, each with a straight arrow to its marker.
+    // The curve is convex, so those arrows stay above it, and the shared order keeps them from crossing.
     var items = refs.map(function (r) {
       var j = -1;
       cs.some(function (c, k) { if (line.indexOf(c) >= 0 && L(c) <= r.loss) { j = k; return true; } });
@@ -143,46 +152,96 @@
       }
       return true;
     }
-    var RINGS = [10, 16, 24, 34, 46, 60, 78, 100, 130, 170], DIRS = [];
+    // The arrow from a stacked label to its marker must not run through a placed label or another marker.
+    function clear(b, self) {
+      var x0 = b.ax - 4, dx = self.px - x0, dy = self.py - b.ay, n = Math.ceil(Math.hypot(dx, dy) / 2);
+      for (var k = 0; k < n - 4; k++) {
+        var x = x0 + dx * k / n, y = b.ay + dy * k / n;
+        if (boxes.some(function (o) { return x > o.x0 - 2 && x < o.x1 + 2 && y > o.y0 - 2 && y < o.y1 + 2; })) return false;
+        if (items.some(function (o) { return o !== self && Math.hypot(o.px - x, o.py - y) < 6; })) return false;
+      }
+      return true;
+    }
+    function box(it, ax, ay, left, d) {
+      return { x0: left ? ax - it.tw : ax, x1: left ? ax : ax + it.tw, y0: ay - TH / 2, y1: ay + TH / 2, ax: ax, ay: ay, left: left, d: d };
+    }
+    var DIRS = [];
     [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7, 8].forEach(function (k) { DIRS.push(k * Math.PI / 8); });
-
-    items.forEach(function (it) {
-      var r = it.r, j = it.j;
-      var g = el('g', { class: 'll-ref', tabindex: 0, role: 'button' }, chart);
-      el('title', {}, g).textContent = r.name + (r.est ? ' ≈ ' : ': ') + r.loss.toFixed(2) + (r.est ? ' (estimated)' : '') +
-        '; first reached at step ' + cs[j].step.toLocaleString('en-US') + ' (' + tokens(cs[j].step) + ' tokens), click to jump there';
-      var lead = el('line', { 'marker-end': 'url(#ll-arrow)' }, g);
-      el('circle', { cx: it.px, cy: it.py, r: 3.5 }, g);
-      var text = el('text', {}, g);
-      var narrow = w < 500;   // phones: short names, no suffix (the tooltip has both)
-      text.textContent = (narrow ? r.short : r.name) + (r.est ? ' ≈' : ' ') + r.loss.toFixed(2) + '';
-      var tw = text.getComputedTextLength() || 6 * text.textContent.length;
-
-      // A spot is the label's near point (ax, ay): the box starts there going right, or ends there going left.
+    function ring(it, rings) {
       var best = null;
-      RINGS.some(function (d) {
+      rings.some(function (d) {
         return DIRS.some(function (a) {
-          var ax = it.px + d * Math.cos(a), ay = it.py + d * Math.sin(a), left = Math.cos(a) < -1e-6;
-          var b = { x0: left ? ax - tw : ax, x1: left ? ax : ax + tw, y0: ay - TH / 2, y1: ay + TH / 2, ax: ax, ay: ay, left: left, d: d };
+          var b = box(it, it.px + d * Math.cos(a), it.py + d * Math.sin(a), Math.cos(a) < -1e-6, d);
           if (free(b, it)) { best = b; return true; }
           return false;
         });
       });
-      if (!best) best = { x0: it.px + 10, x1: it.px + 10 + tw, y0: it.py - TH / 2, y1: it.py + TH / 2, ax: it.px + 10, ay: it.py, left: false, d: 10 };
-      boxes.push(best);
-      text.setAttribute('x', best.ax);
-      text.setAttribute('y', best.ay + 4);
-      text.setAttribute('text-anchor', best.left ? 'end' : 'start');
+      return best;
+    }
+
+    var narrow = w < 500;   // phones: short names, no suffix (the tooltip has both)
+    items.forEach(function (it) {
+      var r = it.r, j = it.j;
+      it.g = el('g', { class: 'll-ref', tabindex: 0, role: 'button' }, chart);
+      el('title', {}, it.g).textContent = r.name + (r.est ? ' ≈ ' : ': ') + r.loss.toFixed(2) + (r.est ? ' (estimated)' : '') +
+        '; first reached at step ' + cs[j].step.toLocaleString('en-US') + ' (' + tokens(cs[j].step) + ' tokens), click to jump there';
+      it.lead = el('line', { 'marker-end': 'url(#ll-arrow)' }, it.g);
+      el('circle', { cx: it.px, cy: it.py, r: 3.5 }, it.g);
+      it.text = el('text', {}, it.g);
+      it.text.textContent = (narrow ? r.short : r.name) + (r.est ? ' ≈' : ' ') + r.loss.toFixed(2) + '';
+      it.tw = it.text.getComputedTextLength() || 6 * it.text.textContent.length;
+    });
+    function near(skip) {
+      boxes = [];
+      items.forEach(function (it) {
+        it.best = skip.indexOf(it) < 0 ? ring(it, [10, 16]) : null;
+        if (it.best) boxes.push(it.best);
+      });
+    }
+    near([]);
+    // A label that doesn't fit takes its whole neighbourhood into the column (markers within 40px,
+    // transitively), so the stacked arrows don't have to thread between labels left beside markers.
+    var far = items.filter(function (it) { return !it.best; });
+    for (var grew = far.length > 0; grew;) {
+      grew = false;
+      items.forEach(function (it) {
+        if (far.indexOf(it) < 0 && far.some(function (o) { return Math.hypot(o.px - it.px, o.py - it.py) < 40; })) { far.push(it); grew = true; }
+      });
+    }
+    if (far.length) near(far);
+    far.sort(function (a, b) { return b.r.loss - a.r.loss; });
+
+    // The column: leftmost x, then lowest height, where every stacked label and arrow is clear.
+    var LH = TH + PAD + 3;
+    if (far.length) {
+      var col = null, x0 = Math.max.apply(null, far.map(function (it) { return it.px; })) + 24;
+      for (var cx = x0; cx < w - m.r - 40 && !col; cx += 8) {
+        for (var by = curveY(cx) - 16; by - (far.length - 1) * LH - TH > m.t && !col; by -= 4) {
+          var bs = far.map(function (it, k) { return box(it, cx, by - (far.length - 1 - k) * LH, false, 99); });
+          if (bs.every(function (b, k) { return free(b, far[k]) && clear(b, far[k]); })) col = bs;
+        }
+      }
+      far.forEach(function (it, k) {
+        it.best = col ? col[k] : ring(it, [24, 34, 46, 60, 78, 100, 130, 170]) || box(it, it.px + 10, it.py, false, 10);
+        boxes.push(it.best);
+      });
+    }
+
+    items.forEach(function (it) {
+      var best = it.best, j = it.j;
+      it.text.setAttribute('x', best.ax);
+      it.text.setAttribute('y', best.ay + 4);
+      it.text.setAttribute('text-anchor', best.left ? 'end' : 'start');
       if (best.d > 16) {
-        var dx = it.px - best.ax, dy = it.py - best.ay, dd = Math.hypot(dx, dy);
-        lead.setAttribute('x1', best.ax);
-        lead.setAttribute('y1', best.ay);
-        lead.setAttribute('x2', it.px - dx / dd * 6);
-        lead.setAttribute('y2', it.py - dy / dd * 6);
-      } else lead.setAttribute('visibility', 'hidden');
+        var sx = best.left ? best.ax + 4 : best.ax - 4, dx = it.px - sx, dy = it.py - best.ay, dd = Math.hypot(dx, dy);
+        it.lead.setAttribute('x1', sx);
+        it.lead.setAttribute('y1', best.ay);
+        it.lead.setAttribute('x2', it.px - dx / dd * 6);
+        it.lead.setAttribute('y2', it.py - dy / dd * 6);
+      } else it.lead.setAttribute('visibility', 'hidden');
       var go = function () { jump(j < 0 ? cs.length - 1 : j); };
-      g.addEventListener('click', go);
-      g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+      it.g.addEventListener('click', go);
+      it.g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
     });
 
     dot = el('circle', { class: 'll-dot', r: 5 }, chart);
@@ -220,22 +279,23 @@
   // One item per sample, clamped to two lines until clicked.
   function build() {
     while (list.firstChild) list.removeChild(list.firstChild);
-    var n = kind === 's' ? index.stems.length : index.n_uncond;
+    // greedy modes are deterministic, so they have a single unconditional sample
+    var n = kind === 's' ? index.stems.length : decoding().n_uncond;
     for (var k = 0; k < n; k++) {
       var li = document.createElement('li');
-      li.className = 'll-item' + (open[kind + k] ? ' open' : '');
+      li.className = 'll-item' + (open[decode + kind + k] ? ' open' : '');
       li.tabIndex = 0;
       li.setAttribute('role', 'button');
-      li.setAttribute('aria-expanded', !!open[kind + k]);
+      li.setAttribute('aria-expanded', !!open[decode + kind + k]);
       li.dataset.k = k;
-      li.innerHTML = '<p class="ll-text"><span class="ll-stem"></span><span class="ll-cont"></span>' +
-        '<span class="ll-end" hidden>[end of document]</span></p>';
+      li.innerHTML = '<div class="ll-body"><p class="ll-text"><span class="ll-stem"></span><span class="ll-cont"></span>' +
+        '<span class="ll-end" hidden>[end of document]</span></p></div><span class="ll-score" hidden></span>';
       list.appendChild(li);
     }
   }
 
   function toggle(li) {
-    var key = kind + li.dataset.k;
+    var key = decode + kind + li.dataset.k;
     open[key] = !open[key];
     li.classList.toggle('open', open[key]);
     li.setAttribute('aria-expanded', open[key]);
@@ -251,19 +311,33 @@
   });
 
   function render() {
-    var i = +slider.value, c = index.ckpts[i], v = kind;
+    var i = +slider.value, c = index.ckpts[i], v = kind, g = decode;
     $('.ll-loss').textContent = fmt(c);
     $('.ll-meta').textContent = (mode !== 'train' && c[mode] != null ? SETS[mode] : 'training loss') +
       ' (nats/token) · step ' + c.step.toLocaleString('en-US') + ' · ' + tokens(c.step) + ' tokens';
     slider.setAttribute('aria-valuetext', 'loss ' + fmt(c) + ', step ' + c.step);
     place();
     load(i).then(function (d) {
-      if (+slider.value !== i || kind !== v) return;   // a newer request superseded this one
+      if (+slider.value !== i || kind !== v || decode !== g) return;   // a newer request superseded this one
+      var rows = d[g + v] || [];
+      var scored = rows.some(function (r) { return r[2] != null; });
+      $('.ll-head').hidden = !scored;
+      list.classList.toggle('ll-scored', scored);
       list.querySelectorAll('.ll-item').forEach(function (li) {
-        var k = +li.dataset.k, row = d[v][k];
+        var k = +li.dataset.k, row = rows[k] || ['(not generated for this checkpoint yet)', false];
         li.querySelector('.ll-stem').textContent = v === 's' ? index.stems[k] : '';
         li.querySelector('.ll-cont').textContent = row[0];
         li.querySelector('.ll-end').hidden = !row[1];
+        // LLM judge score, 1-10: the box is tinted from red (1) through yellow to green (10)
+        var sc = li.querySelector('.ll-score'), n = row[2];
+        sc.hidden = n == null;
+        li.classList.toggle('scored', n != null);
+        if (n != null) {
+          sc.textContent = n + '/10';
+          sc.title = 'LLM score from Qwen3.5-9B (see How the samples were made)';
+          sc.setAttribute('aria-label', 'Qwen score ' + n + ' out of 10');
+          li.style.setProperty('--hue', Math.round((n - 1) / 9 * 120));
+        }
       });
     });
     for (var j = Math.max(0, i - 2); j <= Math.min(index.ckpts.length - 1, i + 2); j++) load(j);
@@ -299,6 +373,14 @@
       kinds.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
       build(); render();
     });
+    d.decodings = d.decodings || [{ key: '', label: 'Sampling (temperature 1)', n_uncond: d.n_uncond }];
+    d.decodings.forEach(function (x) { decodeSel.appendChild(new Option(x.label, x.key)); });
+    decode = d.default || '';
+    decodeSel.value = decode;
+    if (d.decodings.length > 1) {
+      $('.ll-decode-label').hidden = false;
+      decodeSel.addEventListener('change', function () { decode = decodeSel.value; build(); render(); });
+    }
     slider.addEventListener('input', render);
     build();
     draw();

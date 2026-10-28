@@ -14,6 +14,8 @@
   --tip: #2f7a4f;
   --info: #3c6e9e;
   --warn: #a8431a;
+  --score-sat: 60%;           // sample boxes tinted by LLM score: hsl(hue, sat, light), red (1) to green (10)
+  --score-light: 91%;
 
   --font: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -34,6 +36,8 @@
     --tip: #6cc08f;
     --info: #86b2dc;
     --warn: #e4875a;
+    --score-sat: 30%;
+    --score-light: 18%;
   }
 }
 
@@ -390,16 +394,40 @@ time, .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
   .ll-slider { display: block; width: 100%; margin: 0.75rem 0 0.25rem; accent-color: var(--accent); }
   .ll-scale { display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); font-size: 0.8rem; }
 
-  .ll-kind { margin: 1.5rem 0 0.75rem; }
+  .ll-kind { margin: 1.5rem 0 0.75rem; flex-wrap: wrap; align-items: baseline; }
+  .ll-decode-label { margin-left: auto; color: var(--muted); }
+  .ll-decode-label[hidden] { display: none; }
+  .ll-decode {
+    margin-left: 0.4rem;
+    padding: 0.15rem 0.3rem;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+  }
   .ll-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; }
   .ll-msg { color: var(--muted); }
+  // Each row is the sample's box and, when scored, a narrow box with its LLM score beside it,
+  // both tinted by the score; .ll-head labels the two columns.
+  .ll-list.ll-scored .ll-item, .ll-head { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem; gap: 0.25rem; }
+  .ll-head {
+    margin-bottom: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    span:last-child { text-align: center; }
+  }
   .ll-item {
-    padding: 0.6rem 1rem;
-    background: var(--panel);
-    border-left: 2px solid transparent;
     cursor: pointer;
-    &:hover, &:focus-visible { border-left-color: var(--rule); outline: none; }
-    &.open { border-left-color: var(--accent); }
+    outline: none;
+    &:hover .ll-body, &:focus-visible .ll-body { border-left-color: var(--rule); }
+    &.open .ll-body { border-left-color: var(--accent); }
+  }
+  .ll-body, .ll-score { background: var(--panel); }
+  .ll-item.scored .ll-body, .ll-item.scored .ll-score { background: hsl(var(--hue) var(--score-sat) var(--score-light)); }
+  .ll-body {
+    padding: 0.6rem 1rem;
+    border-left: 2px solid transparent;
   }
   .ll-text {
     margin: 0;
@@ -415,6 +443,18 @@ time, .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
     overflow: hidden;
   }
   .ll-item.open .ll-text { display: block; overflow: visible; }
+  .ll-score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    &[hidden] { display: none; }
+  }
+  @media (max-width: 34rem) {
+    .ll-list.ll-scored .ll-item, .ll-head { grid-template-columns: minmax(0, 1fr) 3.75rem; }
+    .ll-head span:last-child { font-size: 0.75rem; }
+  }
   .ll-stem { font-weight: 700; }
   .ll-end { margin-left: 0.25em; color: var(--muted); font-style: italic; }
 }
